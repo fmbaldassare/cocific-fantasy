@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cocific Fantasy — League Record Book</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0E1330;
+  --ink2:#161D42;
+  --ink3:#1E2755;
+  --line:#2C376B;
+  --paper:#E9E5D8;
+  --dim:#8E97C4;
+  --amber:#F2A33C;
+  --amber-dk:#B9741E;
+  --mint:#5FD9A6;
+  --rose:#E8615A;
+  --ghost:#3A4478;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ink);
+  color:var(--paper);
+  font-family:'Barlow',system-ui,-apple-system,sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
+
+/* ---------- header ---------- */
+header{padding:38px 0 0}
+.brand{display:flex;align-items:center;gap:22px;margin-bottom:6px}
+#logo{
+  height:96px;width:96px;object-fit:contain;flex:0 0 auto;
+  background:var(--ink2);border:1px solid var(--line);border-radius:6px;padding:8px;
+}
+@media(max-width:520px){ #logo{height:64px;width:64px} .brand{gap:14px} }
+.eyebrow{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--amber);margin-bottom:10px;
+}
+h1{
+  font-family:'Anton',Impact,sans-serif;
+  font-size:clamp(46px,9vw,92px);
+  line-height:.88;letter-spacing:.01em;
+  margin:0 0 6px;text-transform:uppercase;
+}
+h1 .thin{color:var(--ghost)}
+.tagline{color:var(--dim);max-width:60ch;margin:0 0 26px}
+
+/* ---------- signature: recovery strip ---------- */
+.strip{
+  display:flex;gap:3px;align-items:flex-end;
+  padding:18px 0 10px;border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);margin-bottom:8px;
+  overflow-x:auto;
+}
+.yr{flex:1 1 0;min-width:44px;text-align:center;position:relative}
+.yr .bar{
+  height:46px;border-radius:2px;margin-bottom:7px;
+  display:flex;align-items:flex-end;justify-content:center;
+  padding-bottom:5px;
+  font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;
+  transition:transform .18s ease;
+}
+.yr.has .bar{background:linear-gradient(180deg,var(--ink3),var(--amber-dk));border:1px solid var(--amber);color:var(--paper)}
+.yr.miss .bar{background:repeating-linear-gradient(135deg,transparent,transparent 4px,var(--ghost) 4px,var(--ghost) 5px);border:1px dashed var(--ghost);color:var(--ghost)}
+.yr:hover .bar{transform:translateY(-3px)}
+.yr .lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim)}
+.yr.has .lbl{color:var(--paper)}
+.strip-key{
+  display:flex;gap:20px;font-size:12px;color:var(--dim);
+  font-family:'IBM Plex Mono',monospace;margin-bottom:30px;flex-wrap:wrap;
+}
+.strip-key b{color:var(--amber);font-weight:600}
+
+/* ---------- header from config ---------- */
+$('#eyebrow').textContent = CONFIG.eyebrow;
+$('#tagline').textContent = CONFIG.tagline;
+if(CONFIG.logo){
+  const lg=$('#logo');
+  lg.src=CONFIG.logo; lg.alt=CONFIG.leagueName+' logo'; lg.hidden=false;
+  lg.addEventListener('error',()=>{ lg.hidden=true; console.warn('Logo not found:',CONFIG.logo); });
+}
+
+/* ---------- tabs ---------- */
+nav.tabs{display:flex;gap:2px;flex-wrap:wrap;margin-bottom:26px}
+nav.tabs button{
+  font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.09em;
+  text-transform:uppercase;background:transparent;color:var(--dim);
+  border:1px solid transparent;border-bottom:2px solid transparent;
+  padding:9px 15px;cursor:pointer;
+}
+nav.tabs button:hover{color:var(--paper)}
+nav.tabs button[aria-selected="true"]{color:var(--amber);border-bottom-color:var(--amber)}
+nav.tabs button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* ---------- generic ---------- */
+h2{font-family:'Anton',sans-serif;font-size:24px;text-transform:uppercase;letter-spacing:.02em;margin:34px 0 14px;font-weight:400}
+h2:first-child{margin-top:0}
+h3{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);margin:26px 0 10px;font-weight:600}
+.panel{display:none}
+.panel.on{display:block}
+.card{background:var(--ink2);border:1px solid var(--line);border-radius:3px;padding:18px 20px;margin-bottom:14px}
+.muted{color:var(--dim)}
+.small{font-size:13px}
+select{
+  background:var(--ink3);color:var(--paper);border:1px solid var(--line);
+  padding:7px 10px;font-family:'IBM Plex Mono',monospace;font-size:13px;border-radius:2px;
+}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{
+  font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim);text-align:right;
+  padding:8px 9px;border-bottom:1px solid var(--line);font-weight:600;white-space:nowrap;
+}
+th:first-child,td:first-child{text-align:left}
+td{padding:9px;border-bottom:1px solid rgba(44,55,107,.45);text-align:right;font-variant-numeric:tabular-nums}
+td.name{font-weight:600}
+tbody tr:hover{background:rgba(30,39,85,.5)}
+.num{font-family:'IBM Plex Mono',monospace}
+.pos{color:var(--mint)}
+.neg{color:var(--rose)}
+.rank{color:var(--dim);font-family:'IBM Plex Mono',monospace;width:34px}
+.tag{
+  display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:10px;
+  letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:2px;
+  border:1px solid var(--line);color:var(--dim);margin-left:8px;
+}
+.tag.sleeper{border-color:var(--amber);color:var(--amber)}
+.tag.manual{border-color:var(--ghost);color:var(--ghost)}
+.champ{color:var(--amber)}
+.shame-last{color:var(--rose);font-weight:600}
+.cons{color:var(--mint);font-weight:600}
+
+/* matchups */
+.game{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;
+  background:var(--ink2);border:1px solid var(--line);border-radius:3px;padding:12px 16px;margin-bottom:7px}
+.game .side{display:flex;flex-direction:column}
+.game .side.r{text-align:right;align-items:flex-end}
+.game .tm{font-weight:600}
+.game .sc{font-family:'IBM Plex Mono',monospace;font-size:19px}
+.game .vs{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:.1em}
+.game .w{color:var(--amber)}
+
+/* h2h matrix */
+.matrix-scroll{overflow-x:auto}
+table.matrix td,table.matrix th{padding:6px;font-size:12px;text-align:center}
+table.matrix th.rowh,table.matrix td.rowh{text-align:left;position:sticky;left:0;background:var(--ink);z-index:1;white-space:nowrap}
+table.matrix td.self{background:var(--ink3);color:var(--ghost)}
+
+/* stat cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.stat .k{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
+.stat .v{font-family:'Anton',sans-serif;font-size:30px;line-height:1;margin-bottom:4px}
+.stat .who{font-size:13px;color:var(--paper)}
+.stat .when{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim)}
+
+/* status */
+#status{
+  font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--dim);
+  border-left:2px solid var(--amber);padding:8px 0 8px 14px;margin-bottom:20px;
+}
+#status.err{border-left-color:var(--rose);color:var(--rose)}
+code{font-family:'IBM Plex Mono',monospace;background:var(--ink3);padding:1px 5px;border-radius:2px;font-size:13px}
+pre{background:var(--ink3);border:1px solid var(--line);padding:14px;overflow-x:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;border-radius:3px}
+a{color:var(--amber)}
+.empty{color:var(--dim);font-style:italic;padding:20px 0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+@media(max-width:640px){
+  .game{grid-template-columns:1fr auto 1fr;padding:10px}
+  .game .sc{font-size:16px}
+  th,td{padding:7px 5px;font-size:13px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="brand">
+    <img id="logo" alt="" hidden>
+    <div>
+      <div class="eyebrow" id="eyebrow"></div>
+      <h1>Cocific<br><span class="thin">Fantasy</span></h1>
+    </div>
+  </div>
+  <p class="tagline" id="tagline"></p>
+</header>
+
+<div class="strip" id="strip"></div>
+<div class="strip-key">
+  <span><b>Solid</b> = data loaded</span>
+  <span><b>Hatched</b> = season not recovered yet</span>
+</div>
+
+<div id="status">Loading league chain from Sleeper…</div>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-p="overview" aria-selected="true">Overview</button>
+  <button role="tab" data-p="seasons" aria-selected="false">Seasons</button>
+  <button role="tab" data-p="matchups" aria-selected="false">Matchups</button>
+  <button role="tab" data-p="alltime" aria-selected="false">All-Time</button>
+  <button role="tab" data-p="h2h" aria-selected="false">Head-to-Head</button>
+  <button role="tab" data-p="records" aria-selected="false">Records</button>
+  <button role="tab" data-p="shame" aria-selected="false">Shame</button>
+  <button role="tab" data-p="drafts" aria-selected="false">Drafts</button>
+  <button role="tab" data-p="data" aria-selected="false">Data</button>
+</nav>
+
+<section class="panel on" id="p-overview"></section>
+<section class="panel" id="p-seasons"></section>
+<section class="panel" id="p-matchups"></section>
+<section class="panel" id="p-alltime"></section>
+<section class="panel" id="p-h2h"></section>
+<section class="panel" id="p-records"></section>
+<section class="panel" id="p-shame"></section>
+<section class="panel" id="p-drafts"></section>
+<section class="panel" id="p-data"></section>
+
+</div>
+
+<script>
+/* ============================================================================
+   COCIFIC FANTASY — LEAGUE RECORD BOOK
+   ----------------------------------------------------------------------------
+   Everything you need to edit lives in the three blocks below.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   1. CONFIG
+   ------------------------------------------------------------------------- */
+const CONFIG = {
+  currentLeagueId : '1383865559610822656',  // most recent Sleeper season
+  firstSeason     : 2015,                   // league founded (NFL.com era)
+  leagueName      : 'Cocific Fantasy',
+
+  // Logo: put an image file next to this HTML and name it here, e.g.
+  // 'logo.png'. A full https:// URL works too. Leave '' for no logo.
+  logo            : '',
+
+  eyebrow         : 'Est. 2015 · 14 managers · two platforms',
+
+  // How dead last is decided:
+  //   'standings'   — worst regular-season record (default)
+  //   'consolation' — loser of the final game in the losers bracket
+  lastPlaceRule   : 'standings',
+
+  // The paragraph under the title. Edit freely.
+  tagline         : 'The league record book. Sleeper seasons load live from the '
+                  + 'API every time this page opens. The NFL.com years are being '
+                  + 'recovered by hand — the strip below shows how far along that is.'
+};
+
+/* ---------------------------------------------------------------------------
+   1b. PUNISHMENTS  —  the bottom two, every season
+   ---------------------------------------------------------------------------
+   The page works out who finished last and second-to-last on its own. What it
+   cannot know is what they had to do about it. Fill that in here.
+
+     2022 : 'Whatever they both had to do'
+     2022 : { last: 'Something worse', secondLast: 'Something milder' }
+
+   A season listed here shows up even if we have no standings for it yet, so
+   the NFL.com years appear with their punishment and the names left blank.
+   ------------------------------------------------------------------------- */
+const PUNISHMENTS = {
+  2015 : 'Cheerleaders',
+  2016 : 'Cowboys de Baquedano',
+  2017 : 'Baywatch de Providencia',
+  2018 : 'Chayanne',
+  2019 : 'Asado — never served (COVID)',
+  2020 : 'Boy scouts selling lemonade in the Santiago metro',
+  2021 : 'Piratas del Caribe — had to navigate public waters',
+  2022 : 'PAES — sat the Chilean university entrance exam',
+  2023 : 'Suspended 😌',
+  2024 : 'Suspended 😌',
+  2025 : 'Suspended 😌'
+};
+
+const LAST_PLACE = {
+};
+
+/* ---------------------------------------------------------------------------
+   2. IDENTITY MAP  —  the most important block in this file
+   ---------------------------------------------------------------------------
+   One person, many team names. You were "Milwaukee Beers", "Tasmania Beers"
+   and "Llolleo Beers" in different years — without this, all-time records
+   count you as three different managers.
+
+   Key   = a Sleeper display name, a Sleeper user_id, or an NFL.com team name
+   Value = the canonical person
+
+   Anyone not listed here falls back to their Sleeper display name, so the
+   page works today and gets more accurate as you fill this in.
+   ------------------------------------------------------------------------- */
+const IDENTITY = {
+  // --- Two different Sleeper accounts, same person -------------------------
+  '590266991147786240' : 'Jpsilva01',    // Jpsilva01  — 2020 only
+  '740256872346607616' : 'Jpsilva01',    // jpsilva047 — 2021 onward
+
+  // --- One account that was renamed (same user_id, so no merge needed;
+  //     listed here only so the older name isn't what shows up) -------------
+  '462681756420534272' : 'fjgonzalezb',  // was fjgonzalezb, now fjgonzalezb1984
+
+  // --- Francesco: Sleeper account plus the NFL.com-era team names, so
+  //     manual history rows land in the same row as the Sleeper ones --------
+  '589856753194151936' : 'fbaldassare',
+  'Milwaukee Beers'    : 'fbaldassare',
+  'Tasmania Beers'     : 'fbaldassare',
+  'Llolleo Beers'      : 'fbaldassare',
+
+  // --- 2022 abandoned rosters ---------------------------------------------
+  // Sleeper stores owner_id as null for these, so there is no durable ID to
+  // key on. season:roster is the only option, and it is safe because it names
+  // exactly one team in exactly one season.
+  '2022:3' : 'NegroCastro',   // held Master Yoda in 2021, nlarrain took the slot in 2023
+  '2022:8' : 'josekutz'       // held Medulla Oblongada in 2021, Tonino93 took the slot in 2023
+
+  // --- Possible correction, uncomment if it applies ------------------------
+  // In 2025 and 2026 roster 9 (Milwaukee Weed) is registered to NegroCastro
+  // with fbaldassare as co-owner — the reverse of 2022–2024. If that is a
+  // registration quirk rather than a real handover, these two lines put the
+  // team back under the manager who actually plays it:
+  // ,'2025:9' : 'fbaldassare'
+  // ,'2026:9' : 'fbaldassare'
+};
+
+/* ---------------------------------------------------------------------------
+   2b. TEAM NAME OVERRIDES
+   ---------------------------------------------------------------------------
+   Sleeper keeps a team name in the owner's user record. When a roster has no
+   owner (see the 2022 entries above) that name is simply gone, and the page
+   falls back to "Roster N". Fill it back in here, keyed by season:roster.
+   ------------------------------------------------------------------------- */
+const TEAM_NAMES = {
+  '2022:3' : 'Master Yoda',
+  '2022:8' : 'Medulla Oblongada'
+};
+
+/* ---------------------------------------------------------------------------
+   2c. CO-OWNER OVERRIDES
+   ---------------------------------------------------------------------------
+   Sleeper stores co-owners as they are *today*, not as they were during the
+   season. Someone added after a season ended still shows up on that season's
+   roster. Use this to correct history, keyed by season:roster.
+
+     '2022:9' : []                  -> no co-owners that season
+     '2023:1' : ['SomeManager']     -> force a specific list
+   ------------------------------------------------------------------------- */
+const CO_OWNERS = {
+  '2022:9' : []   // Milwaukee Beers — managed alone in 2022; NegroCastro was
+                  // added later and already has his own team (Master Yoda)
+};
+
+/* ---------------------------------------------------------------------------
+   3. MANUAL HISTORY  —  the NFL.com years (2015–2019)
+   ---------------------------------------------------------------------------
+   Fill these in from screenshots, old emails, or the ESPN migration when it
+   lands. Every season you complete turns its bar solid in the strip up top.
+
+   finish: 1 = champion, 2 = runner-up, etc. Leave out if unknown.
+   Partial seasons are fine — add what you know, leave the rest.
+   ------------------------------------------------------------------------- */
+const MANUAL_HISTORY = [
+  // {
+  //   season: 2020,
+  //   teams: [
+  //     { manager:'Francesco', wins:9, losses:5, ties:0, pf:1587.2, pa:1440.8, finish:3 },
+  //     { manager:'Someone',   wins:11, losses:3, ties:0, pf:1702.4, pa:1388.1, finish:1 }
+  //   ],
+  //   notes: '14 teams, half-PPR'
+  // },
+];
+
+/* ---------------------------------------------------------------------------
+   Nothing below here needs editing.
+   ========================================================================== */
+
+const API = 'https://api.sleeper.app/v1';
+const $  = s => document.querySelector(s);
+const el = (t,c,h) => { const n=document.createElement(t); if(c)n.className=c; if(h!==undefined)n.innerHTML=h; return n; };
+const fmt = (n,d=1) => (n===null||n===undefined||isNaN(n)) ? '—' : Number(n).toFixed(d);
+const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const STATE = { seasons: [], managers: {}, loaded:false };
+const UNRESOLVED = [];
+
+function canon(o){
+  // Resolution order, most durable first:
+  //   1. owner_id        — never changes, survives name changes and new seasons
+  //   2. "season:roster" — explicit per-season override
+  //   3. display name    — what Sleeper reports (or an active co-owner's name)
+  // Deliberately NO bare "roster N" key: roster numbers are reused across
+  // seasons, so such a mapping silently attaches to the wrong team later.
+  if(o.userId    && IDENTITY[o.userId])    return IDENTITY[o.userId];
+  if(o.seasonKey && IDENTITY[o.seasonKey]) return IDENTITY[o.seasonKey];
+  if(o.name      && IDENTITY[o.name])      return IDENTITY[o.name];
+  return o.name || o.fallback || 'Unknown';
+}
+
+async function getJSON(url){
+  const r = await fetch(url);
+  if(!r.ok) throw new Error(r.status + ' on ' + url);
+  return r.json();
+}
+
+/* ---------- load the whole Sleeper chain ---------- */
+async function loadSleeper(){
+  const chain = [];
+  let id = CONFIG.currentLeagueId;
+  let guard = 0;
+  while(id && id !== '0' && guard++ < 30){
+    const lg = await getJSON(`${API}/league/${id}`);
+    chain.push(lg);
+    id = lg.previous_league_id;
+  }
+  chain.reverse();
+  setStatus(`Found ${chain.length} Sleeper season${chain.length===1?'':'s'}. Loading details…`);
+
+  const out = [];
+  for(const lg of chain){
+    try { out.push(await loadSeason(lg)); }
+    catch(e){ console.warn('season failed', lg.season, e); }
+  }
+  return out;
+}
+
+async function loadSeason(lg){
+  const [users, rosters] = await Promise.all([
+    getJSON(`${API}/league/${lg.league_id}/users`),
+    getJSON(`${API}/league/${lg.league_id}/rosters`)
+  ]);
+
+  const userById = {};
+  users.forEach(u => userById[u.user_id] = u);
+
+  const teams = rosters.map(r => {
+    const u = userById[r.owner_id] || {};
+
+    // Every co-owner on the roster, resolved to a user record.
+    const coList = (Array.isArray(r.co_owners) ? r.co_owners : [])
+      .filter(id => id && id !== r.owner_id)
+      .map(id => userById[id])
+      .filter(Boolean);
+
+    // If the primary owner left the league their user record is gone, but an
+    // active co-owner has usually been running the team. Promote them.
+    const co = (!u.display_name && coList.length) ? coList[0] : null;
+
+    const seasonKey = `${lg.season}:${r.roster_id}`;
+    const name = u.display_name || (co && co.display_name) || null;
+    const teamName = TEAM_NAMES[seasonKey]
+      || (u.metadata && u.metadata.team_name)
+      || (co && co.metadata && co.metadata.team_name)
+      || name || `Roster ${r.roster_id}`;
+    const s = r.settings || {};
+
+    const manager = canon({
+      name,
+      userId    : r.owner_id,
+      seasonKey,
+      fallback  : `Unclaimed roster ${r.roster_id}`
+    });
+
+    if(!name && !IDENTITY[r.owner_id] && !IDENTITY[seasonKey]){
+      UNRESOLVED.push({season:lg.season, rosterId:r.roster_id, ownerId:r.owner_id,
+                       teamName, record:`${s.wins||0}-${s.losses||0}`});
+    }
+
+    // An explicit override wins over whatever Sleeper reports today.
+    const derivedCo = coList.filter(c => !co || c.user_id !== co.user_id)
+                            .map(c => canon({name:c.display_name, userId:c.user_id}));
+
+    return {
+      rosterId : r.roster_id,
+      ownerId  : r.owner_id,
+      manager,
+      teamName,
+      coOwners : (CO_OWNERS[seasonKey] !== undefined) ? CO_OWNERS[seasonKey] : derivedCo,
+      viaCoOwner : !u.display_name && !!co,
+      wins     : s.wins||0,
+      losses   : s.losses||0,
+      ties     : s.ties||0,
+      pf       : (s.fpts||0) + (s.fpts_decimal||0)/100,
+      pa       : (s.fpts_against||0) + (s.fpts_against_decimal||0)/100
+    };
+  });
+
+  const byRoster = {};
+  teams.forEach(t => byRoster[t.rosterId] = t);
+
+  const regEnd = (lg.settings && lg.settings.playoff_week_start)
+    ? lg.settings.playoff_week_start - 1 : 14;
+  const lastWeek = Math.min(regEnd + 4, 18);
+
+  const weekData = await Promise.all(
+    Array.from({length:lastWeek}, (_,i) =>
+      getJSON(`${API}/league/${lg.league_id}/matchups/${i+1}`).catch(()=>[])
+    )
+  );
+
+  const weeks = [];
+  weekData.forEach((rows,i) => {
+    if(!rows || !rows.length) return;
+    const scored = rows.filter(r => r.points !== null && r.points !== undefined);
+    if(!scored.length) return;
+    if(scored.every(r => !r.points)) return;   // week not played yet
+
+    const groups = {};
+    rows.forEach(r => {
+      const k = r.matchup_id ?? ('solo'+r.roster_id);
+      (groups[k] = groups[k] || []).push(r);
+    });
+    const games = Object.values(groups)
+      .filter(g => g.length === 2)
+      .map(g => ({
+        a: { rosterId:g[0].roster_id, points:g[0].points||0 },
+        b: { rosterId:g[1].roster_id, points:g[1].points||0 }
+      }));
+    const solo = rows.map(r => ({ rosterId:r.roster_id, points:r.points||0 }));
+    weeks.push({ week:i+1, games, allScores:solo, isPlayoff:(i+1)>regEnd });
+  });
+
+  // champion via winners bracket
+  let champion=null, runnerUp=null;
+  try{
+    const wb = await getJSON(`${API}/league/${lg.league_id}/winners_bracket`);
+    const final = (wb||[]).find(m => m.p === 1);
+    if(final && final.w){
+      champion = byRoster[final.w] ? byRoster[final.w].manager : null;
+      runnerUp = byRoster[final.l] ? byRoster[final.l].manager : null;
+    }
+  }catch(e){}
+
+  // consolation (losers) bracket
+  let consolationWinner=null, consolationRunnerUp=null, bottomPair=null;
+  try{
+    const lb = await getJSON(`${API}/league/${lg.league_id}/losers_bracket`) || [];
+    const who = rid => byRoster[rid] || null;
+
+    // p === 1 in the losers bracket is that bracket's own final
+    const cf = lb.find(m => m.p === 1);
+    if(cf && cf.w){
+      consolationWinner   = who(cf.w) ? who(cf.w).manager : null;
+      consolationRunnerUp = who(cf.l) ? who(cf.l).manager : null;
+    }
+
+    // the highest placement number is the game that settles dead last
+    const maxP = lb.reduce((mx,m) => (typeof m.p === 'number' && m.p > mx) ? m.p : mx, 0);
+    if(maxP){
+      const g = lb.find(m => m.p === maxP);
+      if(g && g.l && who(g.l) && who(g.w)) bottomPair = [who(g.w), who(g.l)];
+    }
+  }catch(e){}
+
+  // draft
+  let draft = [];
+  try{
+    const drafts = await getJSON(`${API}/league/${lg.league_id}/drafts`);
+    if(drafts && drafts.length){
+      const d = drafts.sort((a,b)=>(b.start_time||0)-(a.start_time||0))[0];
+      const picks = await getJSON(`${API}/draft/${d.draft_id}/picks`);
+      draft = (picks||[]).map(p => {
+        const m = p.metadata||{};
+        return {
+          round:p.round, pick:p.pick_no,
+          manager: byRoster[p.roster_id] ? byRoster[p.roster_id].manager : (p.picked_by||'—'),
+          player: [m.first_name,m.last_name].filter(Boolean).join(' ') || p.player_id,
+          position: m.position||'', team: m.team||''
+        };
+      });
+    }
+  }catch(e){}
+
+  return {
+    season:+lg.season, source:'sleeper', leagueId:lg.league_id, name:lg.name,
+    teams, byRoster, weeks, regEnd, champion, runnerUp, draft,
+    consolationWinner, consolationRunnerUp, bottomPair,
+    teamCount: teams.length,
+    scoring: (lg.scoring_settings && lg.scoring_settings.rec) ? `${lg.scoring_settings.rec} PPR` : 'standard'
+  };
+}
+
+/* ---------- fold manual seasons into the same shape ---------- */
+function buildManual(){
+  return MANUAL_HISTORY.map(h => {
+    const teams = (h.teams||[]).map((t,i) => ({
+      rosterId:'m'+i, manager:canon({name:t.manager}), teamName:t.manager,
+      wins:t.wins||0, losses:t.losses||0, ties:t.ties||0,
+      pf:t.pf||0, pa:t.pa||0, finish:t.finish
+    }));
+    const champ = teams.find(t => t.finish===1);
+    const ru    = teams.find(t => t.finish===2);
+    return {
+      season:+h.season, source:'manual', name:CONFIG.leagueName,
+      teams, byRoster:{}, weeks:[], regEnd:null,
+      champion: champ?champ.manager:null, runnerUp: ru?ru.manager:null,
+      consolationWinner:null, consolationRunnerUp:null, bottomPair:null,
+      draft:[], teamCount:teams.length, notes:h.notes||'', scoring:'—'
+    };
+  });
+}
+
+/* ---------- aggregate all-time ---------- */
+function buildManagers(seasons){
+  const m = {};
+  const get = n => m[n] = m[n] || {
+    name:n, seasons:0, wins:0, losses:0, ties:0, pf:0, pa:0,
+    titles:0, finals:0, years:[], allPlayW:0, allPlayL:0, best:null
+  };
+
+  seasons.forEach(s => {
+    s.teams.forEach(t => {
+      const r = get(t.manager);
+      r.seasons++; r.wins+=t.wins; r.losses+=t.losses; r.ties+=t.ties;
+      r.pf+=t.pf; r.pa+=t.pa; r.years.push(s.season);
+    });
+    if(s.champion) get(s.champion).titles++;
+    if(s.champion) get(s.champion).finals++;
+    if(s.runnerUp) get(s.runnerUp).finals++;
+
+    // all-play from regular season weeks
+    s.weeks.filter(w => !w.isPlayoff).forEach(w => {
+      const scores = w.allScores.filter(x => s.byRoster[x.rosterId]);
+      scores.forEach(x => {
+        const t = s.byRoster[x.rosterId]; if(!t) return;
+        const r = get(t.manager);
+        scores.forEach(y => {
+          if(y.rosterId===x.rosterId) return;
+          if(x.points > y.points) r.allPlayW++; else if(x.points < y.points) r.allPlayL++;
+        });
+        if(r.best===null || x.points>r.best.points) r.best={points:x.points,season:s.season,week:w.week};
+      });
+    });
+  });
+
+  Object.values(m).forEach(r => {
+    const g = r.wins+r.losses+r.ties;
+    r.winPct = g ? (r.wins + r.ties*0.5)/g : 0;
+    r.ppg = g ? r.pf/g : 0;
+    const ap = r.allPlayW+r.allPlayL;
+    r.allPlayPct = ap ? r.allPlayW/ap : null;
+    r.luck = (r.allPlayPct!==null) ? r.winPct - r.allPlayPct : null;
+  });
+  return m;
+}
+
+/* ---------- head to head ---------- */
+function buildH2H(seasons){
+  const h={};
+  const add=(a,b,res)=>{ h[a]=h[a]||{}; h[a][b]=h[a][b]||{w:0,l:0,t:0,pf:0,pa:0}; const c=h[a][b];
+    if(res.s>res.o)c.w++; else if(res.s<res.o)c.l++; else c.t++; c.pf+=res.s; c.pa+=res.o; };
+  seasons.forEach(s => s.weeks.forEach(w => w.games.forEach(g => {
+    const A=s.byRoster[g.a.rosterId], B=s.byRoster[g.b.rosterId];
+    if(!A||!B) return;
+    add(A.manager,B.manager,{s:g.a.points,o:g.b.points});
+    add(B.manager,A.manager,{s:g.b.points,o:g.a.points});
+  })));
+  return h;
+}
+
+/* ---------- bottom two, per season and career ---------- */
+function punishmentFor(season){
+  const p = PUNISHMENTS[season];
+  if(!p) return null;
+  return (typeof p === 'string') ? {shared:p} : {last:p.last||'', secondLast:p.secondLast||''};
+}
+
+function buildShame(seasons){
+  const rows = [], tally = {};
+  const bump = (name, isLast, season) => {
+    const t = tally[name] = tally[name] || {name, bottom2:0, last:0, seasons:[]};
+    t.bottom2++; if(isLast) t.last++;
+    t.seasons.push(season + (isLast ? '' : '*'));
+  };
+
+  seasons.slice().sort((a,b)=>b.season-a.season).forEach(s => {
+    const played = s.teams.some(t => (t.wins+t.losses+t.ties) > 0 || t.finish);
+    if(!played) return;   // season not started yet
+
+    let pair;
+    const ov = LAST_PLACE[s.season];
+    if(ov && ov.length === 2){
+      pair = ov.map(n => ({manager:n, teamName:'', overridden:true}));
+    } else if(CONFIG.lastPlaceRule === 'consolation' && s.bottomPair){
+      pair = s.bottomPair;   // [second-to-last, last]
+    } else if(s.teams.some(t => t.finish)){
+      // manual seasons carry an explicit finishing position
+      pair = s.teams.filter(t => t.finish).sort((a,b)=>b.finish-a.finish).slice(0,2).reverse();
+    } else {
+      const ord = s.teams.slice().sort((a,b)=>{
+        const wa=a.wins+a.ties*.5, wb=b.wins+b.ties*.5;
+        return wb-wa || b.pf-a.pf;
+      });
+      pair = ord.slice(-2);
+    }
+    if(pair.length < 2) return;
+
+    const secondLast = pair[0], last = pair[1];
+    rows.push({season:s.season, source:s.source, last, secondLast,
+               punishment: punishmentFor(s.season),
+               overridden: !!(ov && ov.length===2)});
+    bump(last.manager, true, s.season);
+    bump(secondLast.manager, false, s.season);
+  });
+
+  // Seasons we know the punishment for but not yet who served it.
+  Object.keys(PUNISHMENTS).map(Number).forEach(y => {
+    if(!rows.find(r => r.season === y))
+      rows.push({season:y, last:null, secondLast:null,
+                 punishment:punishmentFor(y), unrecovered:true});
+  });
+  rows.sort((a,b) => b.season - a.season);
+
+  return {rows, tally:Object.values(tally).sort((a,b)=>b.last-a.last || b.bottom2-a.bottom2)};
+}
+function buildRecords(seasons){
+  const r = { high:null, low:null, blowout:null, close:null, highLoss:null, lowWin:null, combo:null };
+  seasons.forEach(s => s.weeks.forEach(w => {
+    w.games.forEach(g => {
+      const A=s.byRoster[g.a.rosterId], B=s.byRoster[g.b.rosterId];
+      if(!A||!B) return;
+      const hi = g.a.points>=g.b.points ? {t:A,p:g.a.points,o:B,op:g.b.points} : {t:B,p:g.b.points,o:A,op:g.a.points};
+      const marg = Math.abs(g.a.points-g.b.points);
+      const tot  = g.a.points+g.b.points;
+      const ctx  = {season:s.season, week:w.week, playoff:w.isPlayoff};
+      if(!r.blowout || marg>r.blowout.margin) r.blowout={margin:marg, win:hi.t.manager, lose:hi.o.manager, ws:hi.p, ls:hi.op, ...ctx};
+      if(!r.close   || marg<r.close.margin)   r.close  ={margin:marg, win:hi.t.manager, lose:hi.o.manager, ws:hi.p, ls:hi.op, ...ctx};
+      if(!r.highLoss|| hi.op>r.highLoss.points) r.highLoss={points:hi.op, who:hi.o.manager, beatBy:hi.t.manager, ...ctx};
+      if(!r.lowWin  || hi.p<r.lowWin.points)  r.lowWin ={points:hi.p, who:hi.t.manager, ...ctx};
+      if(!r.combo   || tot>r.combo.total)     r.combo  ={total:tot, a:A.manager, b:B.manager, ...ctx};
+    });
+    w.allScores.forEach(x => {
+      const T=s.byRoster[x.rosterId]; if(!T||!x.points) return;
+      const ctx={season:s.season,week:w.week};
+      if(!r.high || x.points>r.high.points) r.high={points:x.points, who:T.manager, ...ctx};
+      if(!r.low  || x.points<r.low.points)  r.low ={points:x.points, who:T.manager, ...ctx};
+    });
+  }));
+  return r;
+}
+
+/* ============================ RENDERING ============================ */
+
+function setStatus(t, isErr){
+  const s=$('#status'); s.textContent=t; s.className = isErr?'err':'';
+}
+
+function renderStrip(){
+  const strip=$('#strip'); strip.innerHTML='';
+  const now = new Date().getFullYear();
+  const last = Math.max(now, ...STATE.seasons.map(s=>s.season));
+  for(let y=CONFIG.firstSeason; y<=last; y++){
+    const s = STATE.seasons.find(x=>x.season===y);
+    const d = el('div','yr '+(s?'has':'miss'));
+    const src = s ? (s.source==='sleeper'?'SLP':'MAN') : '';
+    d.innerHTML = `<div class="bar" title="${s?esc(s.name):'not recovered'}">${src}</div><div class="lbl">'${String(y).slice(2)}</div>`;
+    strip.appendChild(d);
+  }
+}
+
+function renderOverview(){
+  const p=$('#p-overview'); p.innerHTML='';
+  const seasons=STATE.seasons, mans=STATE.managers;
+  const recovered = seasons.length;
+  const total = (new Date().getFullYear()) - CONFIG.firstSeason + 1;
+
+  const g=el('div','grid');
+  const stat=(k,v,who,when)=>{
+    const c=el('div','card stat');
+    c.innerHTML=`<div class="k">${k}</div><div class="v">${v}</div>`+
+      (who?`<div class="who">${esc(who)}</div>`:'')+(when?`<div class="when">${esc(when)}</div>`:'');
+    return c;
+  };
+  g.appendChild(stat('Seasons recovered', `${recovered} / ${total}`, null,
+    recovered<total ? `${total-recovered} still missing from the NFL.com era` : 'complete'));
+  g.appendChild(stat('Managers tracked', Object.keys(mans).length, null, 'across all recovered seasons'));
+
+  const titled = Object.values(mans).filter(m=>m.titles>0).sort((a,b)=>b.titles-a.titles);
+  g.appendChild(stat('Different champions', titled.length, titled[0]?`${titled[0].name} leads with ${titled[0].titles}`:'', ''));
+
+  const r=STATE.records;
+  if(r.high) g.appendChild(stat('Highest score', fmt(r.high.points), r.high.who, `${r.high.season} week ${r.high.week}`));
+  p.appendChild(g);
+
+  p.appendChild(el('h2',null,'Champions'));
+  const champs = seasons.filter(s=>s.champion).sort((a,b)=>b.season-a.season);
+  if(!champs.length){
+    p.appendChild(el('div','empty','No champions recorded yet. Sleeper fills these in once a playoff bracket completes; earlier years come from the manual history block.'));
+  } else {
+    const t=el('table');
+    t.innerHTML='<thead><tr><th>Season</th><th>Champion</th><th>Runner-up</th><th>Consolation</th><th>Teams</th></tr></thead>';
+    const tb=el('tbody');
+    champs.forEach(s=>{
+      tb.innerHTML+=`<tr><td class="name num">${s.season}${s.source==='manual'?'<span class="tag manual">manual</span>':''}</td>
+        <td class="champ" style="text-align:right">${esc(s.champion)}</td>
+        <td>${esc(s.runnerUp||'—')}</td>
+        <td class="muted small">${esc(s.consolationWinner||'—')}</td>
+        <td class="num">${s.teamCount}</td></tr>`;
+    });
+    t.appendChild(tb); p.appendChild(t);
+  }
+
+  p.appendChild(el('h2',null,'Eras'));
+  const e=el('div','card small muted');
+  e.innerHTML = `<p style="margin-top:0"><b style="color:var(--paper)">2015–2019 &middot; NFL.com</b> — league founded with 10 managers, 12 in year two, 14 from 2017 onward. The 2020 NFL.com season was never activated; the league moved to Sleeper instead. These seasons are being recovered by hand.</p>
+    <p style="margin-bottom:0"><b style="color:var(--paper)">2020–present &middot; Sleeper</b> — loaded live from the API. Scoring and roster rules changed between platforms, so cross-era point totals are not directly comparable. Win-loss records are.</p>`;
+  p.appendChild(e);
+}
+
+function renderSeasons(){
+  const p=$('#p-seasons'); p.innerHTML='';
+  if(!STATE.seasons.length){ p.appendChild(el('div','empty','No seasons loaded.')); return; }
+  const ctr=el('div','controls');
+  const sel=el('select');
+  STATE.seasons.slice().sort((a,b)=>b.season-a.season).forEach(s=>{
+    const o=el('option',null,`${s.season} — ${s.source==='sleeper'?'Sleeper':'manual'}`); o.value=s.season; sel.appendChild(o);
+  });
+  ctr.appendChild(sel); p.appendChild(ctr);
+  const box=el('div'); p.appendChild(box);
+
+  const draw=()=>{
+    const s=STATE.seasons.find(x=>x.season===+sel.value); box.innerHTML='';
+    const h=el('h2',null,`${s.season} standings <span class="tag ${s.source}">${s.source==='sleeper'?'sleeper api':'manual entry'}</span>`);
+    box.appendChild(h);
+    if(s.notes) box.appendChild(el('div','small muted',esc(s.notes)));
+
+    const teams=s.teams.slice().sort((a,b)=>{
+      const wa=a.wins+a.ties*.5, wb=b.wins+b.ties*.5;
+      return wb-wa || b.pf-a.pf;
+    });
+    // Only show the co-owner column in seasons that actually have one.
+    const anyCo = teams.some(t => (t.coOwners||[]).length);
+    const t=el('table');
+    t.innerHTML='<thead><tr><th></th><th>Manager</th>'+(anyCo?'<th>Co-owner</th>':'')+
+      '<th>Team</th><th>W</th><th>L</th><th>T</th><th>PF</th><th>PA</th><th>Diff</th></tr></thead>';
+    const tb=el('tbody');
+    teams.forEach((tm,i)=>{
+      const d=tm.pf-tm.pa;
+      const crown = (s.champion===tm.manager) ? ' <span class="champ">&#9733;</span>' : '';
+      const inherited = tm.viaCoOwner ? '<span class="tag" title="Primary owner left the league; this is the active co-owner">via co-owner</span>' : '';
+      const coCell = anyCo
+        ? `<td class="muted small" style="text-align:right">${esc((tm.coOwners||[]).join(', ')) || '—'}</td>`
+        : '';
+      tb.innerHTML+=`<tr><td class="rank">${i+1}</td><td class="name">${esc(tm.manager)}${crown}${inherited}</td>
+        ${coCell}
+        <td style="text-align:right" class="muted small">${esc(tm.teamName)}</td>
+        <td class="num">${tm.wins}</td><td class="num">${tm.losses}</td><td class="num">${tm.ties}</td>
+        <td class="num">${fmt(tm.pf)}</td><td class="num">${fmt(tm.pa)}</td>
+        <td class="num ${d>=0?'pos':'neg'}">${d>=0?'+':''}${fmt(d)}</td></tr>`;
+    });
+    t.appendChild(tb); box.appendChild(t);
+  };
+  sel.addEventListener('change',draw); draw();
+}
+
+function renderMatchups(){
+  const p=$('#p-matchups'); p.innerHTML='';
+  const withWeeks=STATE.seasons.filter(s=>s.weeks.length);
+  if(!withWeeks.length){ p.appendChild(el('div','empty','Week-by-week results only exist for Sleeper seasons. Manual seasons store final standings only.')); return; }
+
+  const ctr=el('div','controls');
+  const ssel=el('select'), wsel=el('select');
+  withWeeks.slice().sort((a,b)=>b.season-a.season).forEach(s=>{
+    const o=el('option',null,String(s.season)); o.value=s.season; ssel.appendChild(o);
+  });
+  ctr.appendChild(ssel); ctr.appendChild(wsel); p.appendChild(ctr);
+  const box=el('div'); p.appendChild(box);
+
+  const fillWeeks=()=>{
+    const s=withWeeks.find(x=>x.season===+ssel.value); wsel.innerHTML='';
+    s.weeks.forEach(w=>{
+      const o=el('option',null,`Week ${w.week}${w.isPlayoff?' — playoffs':''}`); o.value=w.week; wsel.appendChild(o);
+    });
+  };
+  const draw=()=>{
+    const s=withWeeks.find(x=>x.season===+ssel.value);
+    const w=s.weeks.find(x=>x.week===+wsel.value); box.innerHTML='';
+    if(!w) return;
+    box.appendChild(el('h2',null,`${s.season} &middot; week ${w.week}`));
+
+    const ranked=w.allScores.slice().sort((a,b)=>b.points-a.points);
+    const rankOf={}; ranked.forEach((x,i)=>rankOf[x.rosterId]=i+1);
+
+    w.games.forEach(g=>{
+      const A=s.byRoster[g.a.rosterId], B=s.byRoster[g.b.rosterId]; if(!A||!B) return;
+      const aw=g.a.points>g.b.points, bw=g.b.points>g.a.points;
+      const d=el('div','game');
+      d.innerHTML=`
+        <div class="side"><span class="tm ${aw?'w':''}">${esc(A.manager)}</span>
+          <span class="muted small">${esc(A.teamName)} &middot; #${rankOf[A.rosterId]} this week</span></div>
+        <div style="text-align:center"><div class="sc"><span class="${aw?'w':''}">${fmt(g.a.points)}</span> <span class="vs">—</span> <span class="${bw?'w':''}">${fmt(g.b.points)}</span></div></div>
+        <div class="side r"><span class="tm ${bw?'w':''}">${esc(B.manager)}</span>
+          <span class="muted small">#${rankOf[B.rosterId]} this week &middot; ${esc(B.teamName)}</span></div>`;
+      box.appendChild(d);
+    });
+  };
+  ssel.addEventListener('change',()=>{fillWeeks();draw();});
+  wsel.addEventListener('change',draw);
+  fillWeeks(); draw();
+}
+
+function renderAllTime(){
+  const p=$('#p-alltime'); p.innerHTML='';
+  const rows=Object.values(STATE.managers).sort((a,b)=>b.winPct-a.winPct || b.pf-a.pf);
+  p.appendChild(el('h2',null,'All-time manager records'));
+  p.appendChild(el('div','small muted','Sorted by win percentage. All-play is your record if you had played every other team every week — it strips out schedule luck. Luck is the gap between the two: positive means the schedule was kind.'));
+  const t=el('table');
+  t.innerHTML='<thead><tr><th></th><th>Manager</th><th>Yrs</th><th>W</th><th>L</th><th>Win%</th><th>PF</th><th>PPG</th><th>All-play%</th><th>Luck</th><th>Titles</th></tr></thead>';
+  const tb=el('tbody');
+  rows.forEach((r,i)=>{
+    tb.innerHTML+=`<tr><td class="rank">${i+1}</td><td class="name">${esc(r.name)}</td>
+      <td class="num">${r.seasons}</td><td class="num">${r.wins}</td><td class="num">${r.losses}</td>
+      <td class="num">${(r.winPct*100).toFixed(1)}</td><td class="num">${fmt(r.pf,0)}</td><td class="num">${fmt(r.ppg)}</td>
+      <td class="num">${r.allPlayPct===null?'—':(r.allPlayPct*100).toFixed(1)}</td>
+      <td class="num ${r.luck===null?'':(r.luck>=0?'pos':'neg')}">${r.luck===null?'—':(r.luck>=0?'+':'')+(r.luck*100).toFixed(1)}</td>
+      <td class="num champ">${r.titles||''}</td></tr>`;
+  });
+  t.appendChild(tb); p.appendChild(t);
+}
+
+function renderH2H(){
+  const p=$('#p-h2h'); p.innerHTML='';
+  const h=STATE.h2h;
+  const names=Object.keys(STATE.managers).sort();
+  if(!names.length || !Object.keys(h).length){ p.appendChild(el('div','empty','Head-to-head needs week-level results, which exist for Sleeper seasons only.')); return; }
+  p.appendChild(el('h2',null,'Head-to-head'));
+  p.appendChild(el('div','small muted','Read across: the row manager\u2019s record against each column manager.'));
+  const wrap=el('div','matrix-scroll');
+  const t=el('table','matrix');
+  let head='<thead><tr><th class="rowh">vs</th>';
+  names.forEach(n=>head+=`<th>${esc(n.slice(0,7))}</th>`);
+  head+='</tr></thead>';
+  t.innerHTML=head;
+  const tb=el('tbody');
+  names.forEach(a=>{
+    let row=`<tr><td class="rowh name">${esc(a)}</td>`;
+    names.forEach(b=>{
+      if(a===b){ row+='<td class="self">—</td>'; return; }
+      const c=(h[a]||{})[b];
+      if(!c){ row+='<td class="muted">·</td>'; return; }
+      const cls = c.w>c.l ? 'pos' : (c.w<c.l ? 'neg' : '');
+      row+=`<td class="num ${cls}" title="${esc(a)} ${c.w}-${c.l}${c.t?'-'+c.t:''} vs ${esc(b)}">${c.w}-${c.l}</td>`;
+    });
+    tb.innerHTML+=row+'</tr>';
+  });
+  t.appendChild(tb); wrap.appendChild(t); p.appendChild(wrap);
+}
+
+function renderShame(){
+  const p=$('#p-shame'); p.innerHTML='';
+  const {rows, tally} = STATE.shame;
+  if(!rows.length){ p.appendChild(el('div','empty','No completed seasons yet.')); return; }
+
+  p.appendChild(el('h2',null,'The cellar'));
+  p.appendChild(el('div','small muted','Bottom two by final regular-season standings. Seasons settled another way can be pinned in the LAST_PLACE block at the top of the file.'));
+
+  const t=el('table');
+  t.innerHTML='<thead><tr><th>Season</th><th>Last place</th><th>Second-to-last</th><th>Punishment</th></tr></thead>';
+  const tb=el('tbody');
+  const who = (tm, cls) => tm
+    ? `<span class="${cls}">${esc(tm.manager)}</span>` +
+      (tm.teamName ? `<div class="muted small">${esc(tm.teamName)}</div>` : '')
+    : '<span class="muted">not recovered</span>';
+  rows.forEach(r=>{
+    const pz = r.punishment;
+    const cell = !pz ? '<span class="muted">—</span>'
+      : pz.shared ? esc(pz.shared)
+      : [pz.last ? '<b>Last:</b> '+esc(pz.last) : '',
+         pz.secondLast ? '<b>2nd:</b> '+esc(pz.secondLast) : ''].filter(Boolean).join('<br>');
+    tb.innerHTML+=`<tr>
+      <td class="name num">${r.season}${r.overridden?'<span class="tag">pinned</span>':''}${r.unrecovered?'<span class="tag manual">no data</span>':''}</td>
+      <td style="text-align:right">${who(r.last,'shame-last')}</td>
+      <td style="text-align:right">${who(r.secondLast,'')}</td>
+      <td style="text-align:right" class="small">${cell}</td>
+    </tr>`;
+  });
+  t.appendChild(tb); p.appendChild(t);
+
+  p.appendChild(el('h2',null,'Career tally'));
+  p.appendChild(el('div','small muted','How often each manager landed in the bottom two. An asterisk marks a second-to-last finish rather than dead last.'));
+  const t2=el('table');
+  t2.innerHTML='<thead><tr><th></th><th>Manager</th><th>Last place</th><th>Bottom two</th><th>Seasons</th></tr></thead>';
+  const tb2=el('tbody');
+  tally.forEach((m,i)=>{
+    tb2.innerHTML+=`<tr><td class="rank">${i+1}</td><td class="name">${esc(m.name)}</td>
+      <td class="num ${m.last?'shame-last':''}">${m.last||''}</td>
+      <td class="num">${m.bottom2}</td>
+      <td class="num muted small">${esc(m.seasons.join(', '))}</td></tr>`;
+  });
+  t2.appendChild(tb2); p.appendChild(t2);
+
+  const clean = Object.values(STATE.managers).filter(m => !tally.find(t=>t.name===m.name));
+  if(clean.length){
+    p.appendChild(el('h3',null,'Never finished bottom two'));
+    p.appendChild(el('div','small',clean.map(m=>esc(m.name)).join(' &middot; ')));
+  }
+
+  // ---- consolation bracket ----
+  const cons = STATE.seasons.filter(s=>s.consolationWinner).sort((a,b)=>b.season-a.season);
+  if(cons.length){
+    p.appendChild(el('h2',null,'Consolation bracket'));
+    p.appendChild(el('div','small muted','Winners of the losers bracket — the best of the teams that missed the playoffs.'));
+    const t3=el('table');
+    t3.innerHTML='<thead><tr><th>Season</th><th>Consolation winner</th><th>Beat</th></tr></thead>';
+    const tb3=el('tbody');
+    cons.forEach(s=>{
+      tb3.innerHTML+=`<tr><td class="name num">${s.season}</td>
+        <td style="text-align:right" class="cons">${esc(s.consolationWinner)}</td>
+        <td class="muted">${esc(s.consolationRunnerUp||'—')}</td></tr>`;
+    });
+    t3.appendChild(tb3); p.appendChild(t3);
+
+    const ct={};
+    cons.forEach(s=>{ ct[s.consolationWinner]=(ct[s.consolationWinner]||0)+1; });
+    const multi=Object.entries(ct).filter(([,n])=>n>1).sort((a,b)=>b[1]-a[1]);
+    if(multi.length){
+      p.appendChild(el('div','small muted','Multiple consolation titles: '
+        + multi.map(([n,c])=>`${esc(n)} (${c})`).join(', ')));
+    }
+  }
+}
+
+function renderRecords(){
+  const p=$('#p-records'); p.innerHTML='';
+  const r=STATE.records;
+  p.appendChild(el('h2',null,'The record book'));
+  if(!r.high){ p.appendChild(el('div','empty','Records need week-level scores from Sleeper seasons.')); return; }
+  const g=el('div','grid');
+  const card=(k,v,who,when)=>{
+    const c=el('div','card stat');
+    c.innerHTML=`<div class="k">${k}</div><div class="v">${v}</div><div class="who">${esc(who)}</div><div class="when">${esc(when)}</div>`;
+    g.appendChild(c);
+  };
+  const when=x=>`${x.season} week ${x.week}${x.playoff?' (playoffs)':''}`;
+  card('Highest score', fmt(r.high.points), r.high.who, when(r.high));
+  card('Lowest score', fmt(r.low.points), r.low.who, when(r.low));
+  card('Biggest blowout', fmt(r.blowout.margin), `${r.blowout.win} over ${r.blowout.lose} (${fmt(r.blowout.ws)}–${fmt(r.blowout.ls)})`, when(r.blowout));
+  card('Closest game', fmt(r.close.margin,2), `${r.close.win} over ${r.close.lose}`, when(r.close));
+  card('Highest-scoring loss', fmt(r.highLoss.points), `${r.highLoss.who}, beaten by ${r.highLoss.beatBy}`, when(r.highLoss));
+  card('Lowest-scoring win', fmt(r.lowWin.points), r.lowWin.who, when(r.lowWin));
+  card('Highest combined', fmt(r.combo.total), `${r.combo.a} vs ${r.combo.b}`, when(r.combo));
+  p.appendChild(g);
+
+  p.appendChild(el('h2',null,'Best single week, by manager'));
+  const rows=Object.values(STATE.managers).filter(m=>m.best).sort((a,b)=>b.best.points-a.best.points);
+  const t=el('table');
+  t.innerHTML='<thead><tr><th></th><th>Manager</th><th>Points</th><th>When</th></tr></thead>';
+  const tb=el('tbody');
+  rows.forEach((m,i)=>{
+    tb.innerHTML+=`<tr><td class="rank">${i+1}</td><td class="name">${esc(m.name)}</td>
+      <td class="num">${fmt(m.best.points)}</td><td class="num muted">${m.best.season} wk ${m.best.week}</td></tr>`;
+  });
+  t.appendChild(tb); p.appendChild(t);
+}
+
+function renderDrafts(){
+  const p=$('#p-drafts'); p.innerHTML='';
+  const ds=STATE.seasons.filter(s=>s.draft.length).sort((a,b)=>b.season-a.season);
+  if(!ds.length){ p.appendChild(el('div','empty','No draft data yet. Sleeper drafts appear here once a draft completes.')); return; }
+  const ctr=el('div','controls'); const sel=el('select');
+  ds.forEach(s=>{const o=el('option',null,String(s.season)); o.value=s.season; sel.appendChild(o);});
+  ctr.appendChild(sel); p.appendChild(ctr);
+  const box=el('div'); p.appendChild(box);
+  const draw=()=>{
+    const s=ds.find(x=>x.season===+sel.value); box.innerHTML='';
+    box.appendChild(el('h2',null,`${s.season} draft`));
+    const t=el('table');
+    t.innerHTML='<thead><tr><th>Pick</th><th>Manager</th><th>Player</th><th>Pos</th><th>Team</th></tr></thead>';
+    const tb=el('tbody');
+    s.draft.slice().sort((a,b)=>a.pick-b.pick).forEach(pk=>{
+      tb.innerHTML+=`<tr><td class="rank">${pk.round}.${String(pk.pick).padStart(2,'0')}</td>
+        <td class="name">${esc(pk.manager)}</td><td style="text-align:right">${esc(pk.player)}</td>
+        <td class="num muted">${esc(pk.position)}</td><td class="num muted">${esc(pk.team)}</td></tr>`;
+    });
+    t.appendChild(tb); box.appendChild(t);
+  };
+  sel.addEventListener('change',draw); draw();
+}
+
+function renderData(){
+  const p=$('#p-data'); p.innerHTML='';
+  p.appendChild(el('h2',null,'What is loaded'));
+  const t=el('table');
+  t.innerHTML='<thead><tr><th>Season</th><th>Source</th><th>Teams</th><th>Weeks</th><th>Draft picks</th><th>Champion</th></tr></thead>';
+  const tb=el('tbody');
+  STATE.seasons.slice().sort((a,b)=>b.season-a.season).forEach(s=>{
+    tb.innerHTML+=`<tr><td class="name num">${s.season}</td><td style="text-align:right">${s.source}</td>
+      <td class="num">${s.teamCount}</td><td class="num">${s.weeks.length}</td>
+      <td class="num">${s.draft.length}</td><td>${esc(s.champion||'—')}</td></tr>`;
+  });
+  const now=new Date().getFullYear();
+  for(let y=CONFIG.firstSeason;y<=now;y++){
+    if(!STATE.seasons.find(s=>s.season===y))
+      tb.innerHTML+=`<tr><td class="name num" style="color:var(--ghost)">${y}</td><td colspan="5" class="muted" style="text-align:right">not recovered</td></tr>`;
+  }
+  t.appendChild(tb); p.appendChild(t);
+
+  p.appendChild(el('h2',null,'Adding the NFL.com years'));
+  const d=el('div','card small');
+  d.innerHTML=`<p style="margin-top:0">Open this file in a text editor and fill in <code>MANUAL_HISTORY</code> near the top. One block per season:</p>
+<pre>{
+  season: 2019,
+  teams: [
+    { manager:'Francesco', wins:9, losses:5, ties:0, pf:1587.2, pa:1440.8, finish:3 }
+  ],
+  notes: '14 teams, half-PPR'
+}</pre>
+<p>Add what you know and leave the rest — a season with only final records still counts toward all-time standings and turns its bar solid up top. <code>finish:1</code> marks the champion.</p>
+<p style="margin-bottom:0">If two team names belong to the same person, map them in <code>IDENTITY</code> so their all-time record stays in one row.</p>`;
+  p.appendChild(d);
+
+  p.appendChild(el('h2',null,'How this page gets its data'));
+  const d2=el('div','card small muted');
+  d2.innerHTML=`<p style="margin-top:0">Sleeper seasons are fetched live from <code>api.sleeper.app</code> every time the page loads, walking backwards through <code>previous_league_id</code> from the current league. Nothing is cached and nothing is stored — refresh and you have current standings.</p>
+  <p style="margin-bottom:0">That also means this page needs an internet connection, and the Sleeper half updates itself for free as new seasons are played.</p>`;
+  p.appendChild(d2);
+}
+
+/* ---------- header from config ---------- */
+$('#eyebrow').textContent = CONFIG.eyebrow;
+$('#tagline').textContent = CONFIG.tagline;
+if(CONFIG.logo){
+  const lg=$('#logo');
+  lg.src=CONFIG.logo; lg.alt=CONFIG.leagueName+' logo'; lg.hidden=false;
+  lg.addEventListener('error',()=>{ lg.hidden=true; console.warn('Logo not found:',CONFIG.logo); });
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('nav.tabs button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('nav.tabs button').forEach(x=>x.setAttribute('aria-selected','false'));
+    b.setAttribute('aria-selected','true');
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+    $('#p-'+b.dataset.p).classList.add('on');
+  });
+});
+
+/* ---------- boot ---------- */
+(async function(){
+  try{
+    const sleeper = await loadSleeper();
+    const manual  = buildManual();
+    const seen = new Set(sleeper.map(s=>s.season));
+    STATE.seasons = sleeper.concat(manual.filter(m=>!seen.has(m.season))).sort((a,b)=>a.season-b.season);
+
+    STATE.managers = buildManagers(STATE.seasons);
+    STATE.h2h      = buildH2H(STATE.seasons);
+    STATE.records  = buildRecords(STATE.seasons);
+    STATE.shame    = buildShame(STATE.seasons);
+    STATE.loaded   = true;
+
+    renderStrip(); renderOverview(); renderSeasons(); renderMatchups();
+    renderAllTime(); renderH2H(); renderRecords(); renderShame(); renderDrafts(); renderData();
+
+    const sl=STATE.seasons.filter(s=>s.source==='sleeper').length;
+    const mn=STATE.seasons.length-sl;
+    setStatus(`Loaded ${sl} Sleeper season${sl===1?'':'s'}${mn?` and ${mn} manual`:''}. Last refreshed ${new Date().toLocaleString()}.`);
+
+    if(UNRESOLVED.length){
+      const byOwner = {};
+      UNRESOLVED.forEach(u => (byOwner[u.ownerId] = byOwner[u.ownerId] || []).push(u));
+      console.log('%c' + UNRESOLVED.length + ' roster(s) have no name. Paste these into IDENTITY '
+        + 'and delete any "Unclaimed roster N" lines:', 'color:#F2A33C;font-weight:600');
+      console.log(Object.entries(byOwner).map(([id,list]) =>
+        `  '${id}' : 'NAME_HERE',   // ${list[0].teamName} — roster `
+        + `${list.map(l=>l.rosterId).join('/')} in ${list.map(l=>l.season).join(', ')}`
+        + ` — record ${list[0].record}`
+      ).join('\n'));
+    }
+  }catch(e){
+    console.error(e);
+    setStatus('Could not reach the Sleeper API: '+e.message+'. Check the league ID in CONFIG, then reload.', true);
+  }
+})();
+</script>
+</body>
+</html>
