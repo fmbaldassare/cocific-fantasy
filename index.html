@@ -37,10 +37,11 @@ body{
 header{padding:38px 0 0}
 .brand{display:flex;align-items:center;gap:22px;margin-bottom:6px}
 #logo{
-  height:96px;width:96px;object-fit:contain;flex:0 0 auto;
-  background:var(--ink2);border:1px solid var(--line);border-radius:6px;padding:8px;
+  height:118px;width:auto;max-width:150px;object-fit:contain;flex:0 0 auto;
+  /* emblem stands on its own — no card behind it */
+  filter:drop-shadow(0 3px 10px rgba(0,0,0,.55));
 }
-@media(max-width:520px){ #logo{height:64px;width:64px} .brand{gap:14px} }
+@media(max-width:520px){ #logo{height:74px} .brand{gap:14px} }
 .eyebrow{
   font-family:'IBM Plex Mono',monospace;
   font-size:11px;letter-spacing:.22em;text-transform:uppercase;
@@ -246,19 +247,21 @@ const CONFIG = {
 
   // Logo: put an image file next to this HTML and name it here, e.g.
   // 'logo.png'. A full https:// URL works too. Leave '' for no logo.
-  logo            : '',
+  logo            : 'logo.png',
 
-  eyebrow         : 'Est. 2015 · 14 managers · two platforms',
+  eyebrow         : 'Est. 2015 · 16 managers · two platforms',
 
   // How dead last is decided:
-  //   'standings'   — worst regular-season record (default)
+  //   'standings'   — worst regular-season record (this is Cocific's rule)
   //   'consolation' — loser of the final game in the losers bracket
+  // Ties are broken by points for: the lower-scoring team finishes last.
   lastPlaceRule   : 'standings',
 
   // The paragraph under the title. Edit freely.
-  tagline         : 'The league record book. Sleeper seasons load live from the '
-                  + 'API every time this page opens. The NFL.com years are being '
-                  + 'recovered by hand — the strip below shows how far along that is.'
+  tagline         : 'Doce temporadas. Dieciséis managers. Un solo registro. '
+                  + 'Lo que algunos intentaron borrar sobrevivió a pandemias, '
+                  + 'estallidos y toda clase de incivilidades, y desde hoy queda '
+                  + 'en la nube. Inspirado en las tablitas de JTA.'
 };
 
 /* ---------------------------------------------------------------------------
