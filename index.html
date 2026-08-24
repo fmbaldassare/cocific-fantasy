@@ -534,15 +534,22 @@ async function loadSeason(lg){
     weeks.push({ week:i+1, games, allScores:solo, isPlayoff:(i+1)>regEnd });
   });
 
-  // champion via winners bracket
-  let champion=null, runnerUp=null;
+  // champion, third place and playoff field, all from the winners bracket
+  let champion=null, runnerUp=null, third=null, playoffTeams=[];
   try{
-    const wb = await getJSON(`${API}/league/${lg.league_id}/winners_bracket`);
-    const final = (wb||[]).find(m => m.p === 1);
-    if(final && final.w){
-      champion = byRoster[final.w] ? byRoster[final.w].manager : null;
-      runnerUp = byRoster[final.l] ? byRoster[final.l].manager : null;
-    }
+    const wb = await getJSON(`${API}/league/${lg.league_id}/winners_bracket`) || [];
+    const who = rid => byRoster[rid] ? byRoster[rid].manager : null;
+
+    const final = wb.find(m => m.p === 1);
+    if(final && final.w){ champion = who(final.w); runnerUp = who(final.l); }
+
+    const thirdGame = wb.find(m => m.p === 3);
+    if(thirdGame && thirdGame.w) third = who(thirdGame.w);
+
+    // Anyone appearing in the winners bracket made the playoffs.
+    const ids = new Set();
+    wb.forEach(m => { [m.t1, m.t2, m.w, m.l].forEach(x => { if(x) ids.add(x); }); });
+    playoffTeams = [...ids].map(who).filter(Boolean);
   }catch(e){}
 
   // consolation (losers) bracket
@@ -588,7 +595,7 @@ async function loadSeason(lg){
   return {
     season:+lg.season, source:'sleeper', leagueId:lg.league_id, name:lg.name,
     teams, byRoster, weeks, regEnd, champion, runnerUp, draft,
-    consolationWinner, consolationRunnerUp, bottomPair,
+    consolationWinner, consolationRunnerUp, bottomPair, third, playoffTeams,
     teamCount: teams.length,
     scoring: (lg.scoring_settings && lg.scoring_settings.rec) ? `${lg.scoring_settings.rec} PPR` : 'standard'
   };
@@ -604,11 +611,13 @@ function buildManual(){
     }));
     const champ = teams.find(t => t.finish===1);
     const ru    = teams.find(t => t.finish===2);
+    const trd   = teams.find(t => t.finish===3);
     return {
       season:+h.season, source:'manual', name:CONFIG.leagueName,
       teams, byRoster:{}, weeks:[], regEnd:null,
       champion: champ?champ.manager:null, runnerUp: ru?ru.manager:null,
       consolationWinner:null, consolationRunnerUp:null, bottomPair:null,
+      third: trd?trd.manager:null, playoffTeams:[],
       draft:[], teamCount:teams.length, notes:h.notes||'', scoring:'—'
     };
   });
@@ -619,7 +628,8 @@ function buildManagers(seasons){
   const m = {};
   const get = n => m[n] = m[n] || {
     name:n, seasons:0, wins:0, losses:0, ties:0, pf:0, pa:0,
-    titles:0, finals:0, years:[], allPlayW:0, allPlayL:0, best:null
+    titles:0, finals:0, seconds:0, thirds:0, playoffs:0, consolations:0,
+    years:[], allPlayW:0, allPlayL:0, best:null
   };
 
   seasons.forEach(s => {
@@ -628,9 +638,11 @@ function buildManagers(seasons){
       r.seasons++; r.wins+=t.wins; r.losses+=t.losses; r.ties+=t.ties;
       r.pf+=t.pf; r.pa+=t.pa; r.years.push(s.season);
     });
-    if(s.champion) get(s.champion).titles++;
-    if(s.champion) get(s.champion).finals++;
-    if(s.runnerUp) get(s.runnerUp).finals++;
+    if(s.champion) { get(s.champion).titles++; get(s.champion).finals++; }
+    if(s.runnerUp) { get(s.runnerUp).finals++;  get(s.runnerUp).seconds++; }
+    if(s.third)    get(s.third).thirds++;
+    if(s.consolationWinner) get(s.consolationWinner).consolations++;
+    (s.playoffTeams||[]).forEach(n => get(n).playoffs++);
 
     // all-play from regular season weeks
     s.weeks.filter(w => !w.isPlayoff).forEach(w => {
@@ -1009,6 +1021,71 @@ function renderShame(){
     p.appendChild(el('div','small',clean.map(m=>esc(m.name)).join(' &middot; ')));
   }
 
+}
+
+function renderRecords(){
+  const p=$('#p-records'); p.innerHTML='';
+  const r=STATE.records;
+  p.appendChild(el('h2',null,'The record book'));
+  if(!r.high) p.appendChild(el('div','empty','Weekly records need score data from Sleeper seasons.'));
+  const g=el('div','grid');
+  const card=(k,v,who,when)=>{
+    const c=el('div','card stat');
+    c.innerHTML=`<div class="k">${k}</div><div class="v">${v}</div><div class="who">${esc(who)}</div><div class="when">${esc(when)}</div>`;
+    g.appendChild(c);
+  };
+  const when=x=>`${x.season} week ${x.week}${x.playoff?' (playoffs)':''}`;
+  if(r.high){
+    card('Highest score', fmt(r.high.points), r.high.who, when(r.high));
+    card('Lowest score', fmt(r.low.points), r.low.who, when(r.low));
+    card('Biggest blowout', fmt(r.blowout.margin), `${r.blowout.win} over ${r.blowout.lose} (${fmt(r.blowout.ws)}–${fmt(r.blowout.ls)})`, when(r.blowout));
+    card('Closest game', fmt(r.close.margin,2), `${r.close.win} over ${r.close.lose}`, when(r.close));
+    card('Highest-scoring loss', fmt(r.highLoss.points), `${r.highLoss.who}, beaten by ${r.highLoss.beatBy}`, when(r.highLoss));
+    card('Lowest-scoring win', fmt(r.lowWin.points), r.lowWin.who, when(r.lowWin));
+    card('Highest combined', fmt(r.combo.total), `${r.combo.a} vs ${r.combo.b}`, when(r.combo));
+    p.appendChild(g);
+  }
+
+  const rows=Object.values(STATE.managers).filter(m=>m.best).sort((a,b)=>b.best.points-a.best.points);
+  if(rows.length) p.appendChild(el('h2',null,'Best single week, by manager'));
+  const t=el('table');
+  t.innerHTML='<thead><tr><th></th><th>Manager</th><th>Points</th><th>When</th></tr></thead>';
+  const tb=el('tbody');
+  rows.forEach((m,i)=>{
+    tb.innerHTML+=`<tr><td class="rank">${i+1}</td><td class="name">${esc(m.name)}</td>
+      <td class="num">${fmt(m.best.points)}</td><td class="num muted">${m.best.season} wk ${m.best.week}</td></tr>`;
+  });
+  t.appendChild(tb); p.appendChild(t);
+
+  // ---- postseason ----
+  p.appendChild(el('h2',null,'Postseason'));
+  p.appendChild(el('div','small muted','Playoff appearances and podium finishes. Playoff counts come from the championship bracket, so they only cover seasons where one was played.'));
+  const post = Object.values(STATE.managers)
+    .filter(m => m.playoffs || m.titles || m.seconds || m.thirds)
+    .sort((a,b)=> b.titles-a.titles || b.seconds-a.seconds || b.thirds-a.thirds || b.playoffs-a.playoffs);
+  if(!post.length){
+    p.appendChild(el('div','empty','No completed brackets yet.'));
+  } else {
+    const tp=el('table');
+    tp.innerHTML='<thead><tr><th></th><th>Manager</th><th>Playoffs</th><th>1st</th><th>2nd</th><th>3rd</th><th>Podium</th></tr></thead>';
+    const tbp=el('tbody');
+    post.forEach((m,i)=>{
+      const podium=m.titles+m.seconds+m.thirds;
+      tbp.innerHTML+=`<tr><td class="rank">${i+1}</td><td class="name">${esc(m.name)}</td>
+        <td class="num">${m.playoffs||''}</td>
+        <td class="num champ">${m.titles||''}</td>
+        <td class="num">${m.seconds||''}</td>
+        <td class="num">${m.thirds||''}</td>
+        <td class="num">${podium||''}</td></tr>`;
+    });
+    tp.appendChild(tbp); p.appendChild(tp);
+
+    const never = Object.values(STATE.managers).filter(m => !m.playoffs && m.seasons);
+    if(never.length){
+      p.appendChild(el('div','small muted','Never made the playoffs: ' + never.map(m=>esc(m.name)).join(' &middot; ')));
+    }
+  }
+
   // ---- consolation bracket ----
   const cons = STATE.seasons.filter(s=>s.consolationWinner).sort((a,b)=>b.season-a.season);
   if(cons.length){
@@ -1024,47 +1101,13 @@ function renderShame(){
     });
     t3.appendChild(tb3); p.appendChild(t3);
 
-    const ct={};
-    cons.forEach(s=>{ ct[s.consolationWinner]=(ct[s.consolationWinner]||0)+1; });
-    const multi=Object.entries(ct).filter(([,n])=>n>1).sort((a,b)=>b[1]-a[1]);
+    const multi = Object.values(STATE.managers).filter(m=>m.consolations>1)
+      .sort((a,b)=>b.consolations-a.consolations);
     if(multi.length){
       p.appendChild(el('div','small muted','Multiple consolation titles: '
-        + multi.map(([n,c])=>`${esc(n)} (${c})`).join(', ')));
+        + multi.map(m=>`${esc(m.name)} (${m.consolations})`).join(', ')));
     }
   }
-}
-
-function renderRecords(){
-  const p=$('#p-records'); p.innerHTML='';
-  const r=STATE.records;
-  p.appendChild(el('h2',null,'The record book'));
-  if(!r.high){ p.appendChild(el('div','empty','Records need week-level scores from Sleeper seasons.')); return; }
-  const g=el('div','grid');
-  const card=(k,v,who,when)=>{
-    const c=el('div','card stat');
-    c.innerHTML=`<div class="k">${k}</div><div class="v">${v}</div><div class="who">${esc(who)}</div><div class="when">${esc(when)}</div>`;
-    g.appendChild(c);
-  };
-  const when=x=>`${x.season} week ${x.week}${x.playoff?' (playoffs)':''}`;
-  card('Highest score', fmt(r.high.points), r.high.who, when(r.high));
-  card('Lowest score', fmt(r.low.points), r.low.who, when(r.low));
-  card('Biggest blowout', fmt(r.blowout.margin), `${r.blowout.win} over ${r.blowout.lose} (${fmt(r.blowout.ws)}–${fmt(r.blowout.ls)})`, when(r.blowout));
-  card('Closest game', fmt(r.close.margin,2), `${r.close.win} over ${r.close.lose}`, when(r.close));
-  card('Highest-scoring loss', fmt(r.highLoss.points), `${r.highLoss.who}, beaten by ${r.highLoss.beatBy}`, when(r.highLoss));
-  card('Lowest-scoring win', fmt(r.lowWin.points), r.lowWin.who, when(r.lowWin));
-  card('Highest combined', fmt(r.combo.total), `${r.combo.a} vs ${r.combo.b}`, when(r.combo));
-  p.appendChild(g);
-
-  p.appendChild(el('h2',null,'Best single week, by manager'));
-  const rows=Object.values(STATE.managers).filter(m=>m.best).sort((a,b)=>b.best.points-a.best.points);
-  const t=el('table');
-  t.innerHTML='<thead><tr><th></th><th>Manager</th><th>Points</th><th>When</th></tr></thead>';
-  const tb=el('tbody');
-  rows.forEach((m,i)=>{
-    tb.innerHTML+=`<tr><td class="rank">${i+1}</td><td class="name">${esc(m.name)}</td>
-      <td class="num">${fmt(m.best.points)}</td><td class="num muted">${m.best.season} wk ${m.best.week}</td></tr>`;
-  });
-  t.appendChild(tb); p.appendChild(t);
 }
 
 function renderDrafts(){
