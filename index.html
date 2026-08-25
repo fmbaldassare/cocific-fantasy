@@ -190,6 +190,10 @@ table.matrix td,table.matrix th{padding:6px;font-size:12px;text-align:center}
 table.matrix th.rowh,table.matrix td.rowh{text-align:left;position:sticky;left:0;background:var(--ink);z-index:1;white-space:nowrap}
 table.matrix td.self{background:var(--ink3);color:var(--ghost)}
 
+/* odds bar */
+.oddsbar{display:block;height:5px;background:var(--ink3);border-radius:3px;overflow:hidden;margin-bottom:4px;min-width:70px}
+.oddsbar span{display:block;height:100%;background:linear-gradient(90deg,var(--amber-dk),var(--amber))}
+
 /* stat cards */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
 .stat .k{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
@@ -244,6 +248,7 @@ a{color:var(--amber)}
   <button role="tab" data-p="alltime" aria-selected="false">All-Time</button>
   <button role="tab" data-p="h2h" aria-selected="false">Head-to-Head</button>
   <button role="tab" data-p="records" aria-selected="false">Records</button>
+  <button role="tab" data-p="forecast" aria-selected="false">Forecast</button>
   <button role="tab" data-p="shame" aria-selected="false">Shame</button>
   <button role="tab" data-p="drafts" aria-selected="false">Drafts</button>
   <button role="tab" data-p="data" aria-selected="false">Data</button>
@@ -255,6 +260,7 @@ a{color:var(--amber)}
 <section class="panel" id="p-alltime"></section>
 <section class="panel" id="p-h2h"></section>
 <section class="panel" id="p-records"></section>
+<section class="panel" id="p-forecast"></section>
 <section class="panel" id="p-shame"></section>
 <section class="panel" id="p-drafts"></section>
 <section class="panel" id="p-data"></section>
@@ -561,11 +567,9 @@ async function loadSeason(lg){
   );
 
   const weeks = [];
+  const schedule = [];
   weekData.forEach((rows,i) => {
     if(!rows || !rows.length) return;
-    const scored = rows.filter(r => r.points !== null && r.points !== undefined);
-    if(!scored.length) return;
-    if(scored.every(r => !r.points)) return;   // week not played yet
 
     const groups = {};
     rows.forEach(r => {
@@ -578,6 +582,15 @@ async function loadSeason(lg){
         a: { rosterId:g[0].roster_id, points:g[0].points||0 },
         b: { rosterId:g[1].roster_id, points:g[1].points||0 }
       }));
+    if(!games.length) return;
+
+    // Pairings exist before a week is played — keep them for forecasting.
+    schedule.push({ week:i+1, isPlayoff:(i+1)>regEnd,
+                    pairs: games.map(g => [g.a.rosterId, g.b.rosterId]) });
+
+    const scored = rows.filter(r => r.points !== null && r.points !== undefined);
+    if(!scored.length) return;
+    if(scored.every(r => !r.points)) return;   // week not played yet
 
     // In playoff weeks Sleeper still returns a row for every roster, including
     // eliminated teams whose leftover players score a few stray points. Only
@@ -587,7 +600,6 @@ async function loadSeason(lg){
     const solo = rows.filter(r => playing.has(r.roster_id))
                      .map(r => ({ rosterId:r.roster_id, points:r.points||0 }));
 
-    if(!games.length) return;
     weeks.push({ week:i+1, games, allScores:solo, isPlayoff:(i+1)>regEnd });
   });
 
@@ -651,7 +663,7 @@ async function loadSeason(lg){
 
   return {
     season:+lg.season, source:'sleeper', leagueId:lg.league_id, name:lg.name,
-    teams, byRoster, weeks, regEnd, champion, runnerUp, draft,
+    teams, byRoster, weeks, schedule, regEnd, champion, runnerUp, draft,
     consolationWinner, consolationRunnerUp, bottomPair, third, playoffTeams,
     teamCount: teams.length,
     // If a league plays an extra weekly game against the league median, the
@@ -677,7 +689,7 @@ function buildManual(){
       season:+h.season, source:'manual', name:CONFIG.leagueName,
       teams, byRoster:{}, weeks:[], regEnd:null,
       champion: champ?champ.manager:null, runnerUp: ru?ru.manager:null,
-      consolationWinner:null, consolationRunnerUp:null, bottomPair:null,
+      consolationWinner:null, consolationRunnerUp:null, bottomPair:null, schedule:[],
       third: trd?trd.manager:null, playoffTeams:[],
       draft:[], teamCount:teams.length, notes:h.notes||'', scoring:'—'
     };
@@ -840,6 +852,111 @@ function buildShame(seasons){
 
   return {rows, tally:Object.values(tally).sort((a,b)=>b.last-a.last || b.bottom2-a.bottom2)};
 }
+
+/* ---------- playoff odds: Monte Carlo ----------------------------------------
+   Method, and why each piece is there:
+
+   - Each team's weekly score is drawn from a normal distribution with its own
+     mean and a league-wide standard deviation. This is the standard approach
+     for fantasy playoff odds.
+   - A team's mean is NOT its raw scoring average. Points per game is the best
+     single predictor available, but noisy in small samples, so the raw average
+     is shrunk toward the league mean: after n weeks the estimate is
+     (n*observed + K*league) / (n + K), with K = 5. Early on a team is mostly
+     league-average; by week 10 its own scoring dominates. Ordinary
+     empirical-Bayes shrinkage, and it beats using the raw average.
+   - Remaining games come from the real schedule, so strength of schedule is
+     handled implicitly rather than modelled.
+   - 10,000 seasons simulated. Standings ranked by wins, then points for,
+     matching how the league actually breaks ties.
+
+   Deliberately NOT modelled: individual players, injuries, or draft quality.
+   Before any games are played every team sits at the league mean, so the odds
+   come out near-uniform. That is the honest answer, not a broken model - a
+   drafted roster carries no information this page can measure.
+--------------------------------------------------------------------------- */
+function buildForecast(){
+  const cur = STATE.seasons.filter(s=>s.source==='sleeper').pop();
+  if(!cur || !cur.schedule || !cur.schedule.length) return null;
+
+  const SIMS = 10000, K = 5;
+
+  const pool = [];
+  STATE.seasons.filter(s=>s.source==='sleeper').forEach(s =>
+    s.weeks.filter(w=>!w.isPlayoff).forEach(w => w.allScores.forEach(x => pool.push(x.points))));
+  const lgMean = pool.length ? pool.reduce((a,b)=>a+b,0)/pool.length : 110;
+  const lgSD = pool.length>1
+    ? Math.sqrt(pool.reduce((a,b)=>a+(b-lgMean)**2,0)/(pool.length-1)) : 28;
+
+  const obs={}, wins={}, pf={};
+  cur.teams.forEach(t => { obs[t.rosterId]=[]; wins[t.rosterId]=0; pf[t.rosterId]=0; });
+  const played = cur.weeks.filter(w=>!w.isPlayoff);
+  played.forEach(w => {
+    w.games.forEach(g => {
+      pf[g.a.rosterId]+=g.a.points; pf[g.b.rosterId]+=g.b.points;
+      if(g.a.points>g.b.points) wins[g.a.rosterId]++;
+      else if(g.b.points>g.a.points) wins[g.b.rosterId]++;
+      else { wins[g.a.rosterId]+=0.5; wins[g.b.rosterId]+=0.5; }
+    });
+    w.allScores.forEach(x => { if(obs[x.rosterId]) obs[x.rosterId].push(x.points); });
+  });
+
+  const mu={};
+  cur.teams.forEach(t => {
+    const a=obs[t.rosterId]||[], n=a.length;
+    const m = n ? a.reduce((x,y)=>x+y,0)/n : lgMean;
+    mu[t.rosterId] = (n*m + K*lgMean) / (n + K);
+  });
+
+  const playedSet = new Set(played.map(w=>w.week));
+  const remaining = cur.schedule.filter(w => !w.isPlayoff && !playedSet.has(w.week));
+  const spots = cur.playoffTeamCount || 6;
+
+  let spare=null;
+  const gauss = () => {
+    if(spare!==null){ const v=spare; spare=null; return v; }
+    let u=0,v=0,s2=0;
+    do { u=Math.random()*2-1; v=Math.random()*2-1; s2=u*u+v*v; } while(!s2||s2>=1);
+    const f=Math.sqrt(-2*Math.log(s2)/s2);
+    spare=v*f; return u*f;
+  };
+
+  const ids = cur.teams.map(t=>t.rosterId);
+  const made={}, seedSum={}, winSum={}, topSeed={};
+  ids.forEach(i => { made[i]=0; seedSum[i]=0; winSum[i]=0; topSeed[i]=0; });
+
+  for(let s=0;s<SIMS;s++){
+    const w={}, p={};
+    ids.forEach(i => { w[i]=wins[i]; p[i]=pf[i]; });
+    remaining.forEach(week => week.pairs.forEach(pair => {
+      const x=pair[0], y=pair[1];
+      const sx = mu[x] + gauss()*lgSD;
+      const sy = mu[y] + gauss()*lgSD;
+      p[x]+=sx; p[y]+=sy;
+      if(sx>sy) w[x]++; else if(sy>sx) w[y]++; else { w[x]+=0.5; w[y]+=0.5; }
+    }));
+    const order = ids.slice().sort((a,b)=> w[b]-w[a] || p[b]-p[a]);
+    order.forEach((id,idx) => {
+      seedSum[id]+=idx+1; winSum[id]+=w[id];
+      if(idx<spots) made[id]++;
+      if(idx===0) topSeed[id]++;
+    });
+  }
+
+  const rows = cur.teams.map(t => ({
+    manager: t.manager, teamName: t.teamName,
+    wins: wins[t.rosterId], games: played.length,
+    ppg: obs[t.rosterId].length ? pf[t.rosterId]/obs[t.rosterId].length : null,
+    projWins: winSum[t.rosterId]/SIMS,
+    seed: seedSum[t.rosterId]/SIMS,
+    odds: made[t.rosterId]/SIMS,
+    top: topSeed[t.rosterId]/SIMS
+  })).sort((a,b)=> b.odds-a.odds || b.projWins-a.projWins);
+
+  return {rows, lgMean, lgSD, spots, weeksPlayed:played.length,
+          weeksLeft:remaining.length, season:cur.season, sims:SIMS, K};
+}
+
 function buildRecords(seasons, scope){
   // scope: 'all' | 'reg' | 'post'
   const keep = w => scope==='reg' ? !w.isPlayoff : scope==='post' ? w.isPlayoff : true;
@@ -1218,6 +1335,50 @@ function renderShame(){
 
 }
 
+
+function renderForecast(){
+  const p=$('#p-forecast'); p.innerHTML='';
+  const f=STATE.forecast;
+  if(!f){ p.appendChild(el('div','empty','No current-season schedule available yet. Odds appear once Sleeper publishes the matchups.')); return; }
+
+  p.appendChild(el('h2',null,`${f.season} playoff odds`));
+
+  const state = f.weeksPlayed === 0
+    ? `No games played yet. Every team starts at the league average of ${fmt(f.lgMean)} points per week, so these odds are driven only by the schedule — they are close to even by design. They start moving after week 1.`
+    : `${f.weeksPlayed} week${f.weeksPlayed===1?'':'s'} played, ${f.weeksLeft} to go. ${f.sims.toLocaleString()} simulated seasons. Top ${f.spots} make the playoffs.`;
+  p.appendChild(el('div','small muted',state));
+
+  const t=el('table');
+  t.innerHTML='<thead><tr><th></th><th>Manager</th><th>Record</th><th>PPG</th><th>Proj. wins</th><th>Avg seed</th><th>Top seed</th><th>Playoff odds</th></tr></thead>';
+  const tb=el('tbody');
+  f.rows.forEach((r,i)=>{
+    const pct=(r.odds*100);
+    const cls = pct>=75?'pos' : pct<=25?'neg' : '';
+    const losses = r.games - r.wins;
+    tb.innerHTML+=`<tr>
+      <td class="rank">${i+1}</td>
+      <td class="name">${esc(r.manager)}<div class="muted small">${esc(r.teamName)}</div></td>
+      <td class="num">${r.games?`${r.wins}-${losses}`:'—'}</td>
+      <td class="num">${r.ppg===null?'—':fmt(r.ppg)}</td>
+      <td class="num">${fmt(r.projWins)}</td>
+      <td class="num muted">${fmt(r.seed)}</td>
+      <td class="num muted">${(r.top*100).toFixed(0)}%</td>
+      <td class="num">
+        <div class="oddsbar"><span style="width:${Math.max(pct,1.5)}%"></span></div>
+        <span class="${cls}">${pct.toFixed(1)}%</span>
+      </td></tr>`;
+  });
+  t.appendChild(tb); p.appendChild(t);
+
+  p.appendChild(el('h3',null,'How this works'));
+  const m=el('div','card small muted');
+  m.innerHTML = `
+    <p style="margin-top:0">Each team's weekly score is drawn from a normal distribution: its own mean, and a league-wide standard deviation of <b style="color:var(--paper)">${fmt(f.lgSD)}</b> points measured across every completed Sleeper season. The remaining schedule is the real one, so a hard run of opponents shows up in the odds without being modelled separately.</p>
+    <p>A team's projected mean is not its raw average. Points per game is the best single predictor available, but it is unreliable over a handful of games, so the average is pulled toward the league mean of <b style="color:var(--paper)">${fmt(f.lgMean)}</b> — weighted as if the league average were ${f.K} extra games on the schedule. After three weeks a team is still mostly league-average; by week ten its own scoring dominates. Without that correction, a lucky week 1 would produce absurd forecasts.</p>
+    <p style="margin-bottom:0">Not modelled: individual players, injuries, bye weeks, trades, or how good the draft was. So before the season starts these numbers carry no real information, and they are worth reading from about week 4 onward.</p>`;
+  p.appendChild(m);
+}
+
 function renderRecords(){
   const p=$('#p-records'); p.innerHTML='';
   const r=STATE.records;
@@ -1434,11 +1595,12 @@ document.querySelectorAll('nav.tabs button').forEach(b=>{
     STATE.records  = buildRecords(STATE.seasons,'all');
     STATE.recReg   = buildRecords(STATE.seasons,'reg');
     STATE.recPost  = buildRecords(STATE.seasons,'post');
+    STATE.forecast = buildForecast();
     STATE.shame    = buildShame(STATE.seasons);
     STATE.loaded   = true;
 
     renderStrip(); renderOverview(); renderSeasons(); renderMatchups();
-    renderAllTime(); renderH2H(); renderRecords(); renderShame(); renderDrafts(); renderData();
+    renderAllTime(); renderH2H(); renderRecords(); renderForecast(); renderShame(); renderDrafts(); renderData();
 
     const sl=STATE.seasons.filter(s=>s.source==='sleeper').length;
     const mn=STATE.seasons.length-sl;
