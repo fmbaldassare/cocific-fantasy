@@ -578,7 +578,16 @@ async function loadSeason(lg){
         a: { rosterId:g[0].roster_id, points:g[0].points||0 },
         b: { rosterId:g[1].roster_id, points:g[1].points||0 }
       }));
-    const solo = rows.map(r => ({ rosterId:r.roster_id, points:r.points||0 }));
+
+    // In playoff weeks Sleeper still returns a row for every roster, including
+    // eliminated teams whose leftover players score a few stray points. Only
+    // rosters actually paired in a game count as having played.
+    const playing = new Set();
+    games.forEach(g => { playing.add(g.a.rosterId); playing.add(g.b.rosterId); });
+    const solo = rows.filter(r => playing.has(r.roster_id))
+                     .map(r => ({ rosterId:r.roster_id, points:r.points||0 }));
+
+    if(!games.length) return;
     weeks.push({ week:i+1, games, allScores:solo, isPlayoff:(i+1)>regEnd });
   });
 
@@ -827,9 +836,11 @@ function buildShame(seasons){
 
   return {rows, tally:Object.values(tally).sort((a,b)=>b.last-a.last || b.bottom2-a.bottom2)};
 }
-function buildRecords(seasons){
+function buildRecords(seasons, scope){
+  // scope: 'all' | 'reg' | 'post'
+  const keep = w => scope==='reg' ? !w.isPlayoff : scope==='post' ? w.isPlayoff : true;
   const r = { high:null, low:null, blowout:null, close:null, highLoss:null, lowWin:null, combo:null };
-  seasons.forEach(s => s.weeks.forEach(w => {
+  seasons.forEach(s => s.weeks.filter(keep).forEach(w => {
     w.games.forEach(g => {
       const A=s.byRoster[g.a.rosterId], B=s.byRoster[g.b.rosterId];
       if(!A||!B) return;
@@ -1208,14 +1219,17 @@ function renderRecords(){
   const r=STATE.records;
   p.appendChild(el('h2',null,'The record book'));
   if(!r.high) p.appendChild(el('div','empty','Weekly records need score data from Sleeper seasons.'));
-  const g=el('div','grid');
-  const card=(k,v,who,when)=>{
-    const c=el('div','card stat');
-    c.innerHTML=`<div class="k">${k}</div><div class="v">${v}</div><div class="who">${esc(who)}</div><div class="when">${esc(when)}</div>`;
-    g.appendChild(c);
-  };
-  const when=x=>`${x.season} week ${x.week}${x.playoff?' (playoffs)':''}`;
-  if(r.high){
+  const when=x=>`${x.season} week ${x.week}`;
+  const group=(title, r, note)=>{
+    if(!r || !r.high) return;
+    p.appendChild(el('h3',null,title));
+    if(note) p.appendChild(el('div','small muted',note));
+    const g=el('div','grid');
+    const card=(k,v,who,w2)=>{
+      const c=el('div','card stat');
+      c.innerHTML=`<div class="k">${k}</div><div class="v">${v}</div><div class="who">${esc(who)}</div><div class="when">${esc(w2)}</div>`;
+      g.appendChild(c);
+    };
     card('Highest score', fmt(r.high.points), r.high.who, when(r.high));
     card('Lowest score', fmt(r.low.points), r.low.who, when(r.low));
     card('Biggest blowout', fmt(r.blowout.margin), `${r.blowout.win} over ${r.blowout.lose} (${fmt(r.blowout.ws)}–${fmt(r.blowout.ls)})`, when(r.blowout));
@@ -1224,10 +1238,14 @@ function renderRecords(){
     card('Lowest-scoring win', fmt(r.lowWin.points), r.lowWin.who, when(r.lowWin));
     card('Highest combined', fmt(r.combo.total), `${r.combo.a} vs ${r.combo.b}`, when(r.combo));
     p.appendChild(g);
-  }
+  };
+
+  group('Regular season', STATE.recReg);
+  group('Playoffs', STATE.recPost, 'Championship and consolation bracket games only. Teams eliminated from both brackets are excluded — they are not playing, even though Sleeper still reports a score for them.');
 
   const rows=Object.values(STATE.managers).filter(m=>m.best).sort((a,b)=>b.best.points-a.best.points);
   if(rows.length) p.appendChild(el('h2',null,'Best single week, by manager'));
+  if(rows.length) p.appendChild(el('div','small muted','Regular season only.'));
   const t=el('table');
   t.innerHTML='<thead><tr><th></th><th>Manager</th><th>Points</th><th>When</th></tr></thead>';
   const tb=el('tbody');
@@ -1409,7 +1427,9 @@ document.querySelectorAll('nav.tabs button').forEach(b=>{
     STATE.managers = buildManagers(STATE.seasons);
     STATE.h2h      = buildH2H(STATE.seasons);
     STATE.rivalries= buildRivalries(STATE.seasons);
-    STATE.records  = buildRecords(STATE.seasons);
+    STATE.records  = buildRecords(STATE.seasons,'all');
+    STATE.recReg   = buildRecords(STATE.seasons,'reg');
+    STATE.recPost  = buildRecords(STATE.seasons,'post');
     STATE.shame    = buildShame(STATE.seasons);
     STATE.loaded   = true;
 
