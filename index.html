@@ -654,6 +654,10 @@ async function loadSeason(lg){
     teams, byRoster, weeks, regEnd, champion, runnerUp, draft,
     consolationWinner, consolationRunnerUp, bottomPair, third, playoffTeams,
     teamCount: teams.length,
+    // If a league plays an extra weekly game against the league median, the
+    // official W-L will not match what the head-to-head matchups alone imply.
+    medianMatch: !!(lg.settings && lg.settings.league_average_match),
+    playoffTeamCount: (lg.settings && lg.settings.playoff_teams) || null,
     scoring: (lg.scoring_settings && lg.scoring_settings.rec) ? `${lg.scoring_settings.rec} PPR` : 'standard'
   };
 }
