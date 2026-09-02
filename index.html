@@ -94,15 +94,6 @@ h1 .thin{color:var(--ghost)}
 .yr.off .lbl{color:var(--ghost)}
 .yr:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 
-/* ---------- header from config ---------- */
-$('#eyebrow').textContent = CONFIG.eyebrow;
-$('#tagline').textContent = CONFIG.tagline;
-if(CONFIG.logo){
-  const lg=$('#logo');
-  lg.src=CONFIG.logo; lg.alt=CONFIG.leagueName+' logo'; lg.hidden=false;
-  lg.addEventListener('error',()=>{ lg.hidden=true; console.warn('Logo not found:',CONFIG.logo); });
-}
-
 /* ---------- tabs ---------- */
 nav.tabs{display:flex;gap:2px;flex-wrap:wrap;margin-bottom:26px}
 nav.tabs button{
@@ -215,6 +206,10 @@ table.matrix td.self{background:var(--ink3);color:var(--ghost)}
 
 /* stat cards */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.grid-wide{grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+.grid-wide .card{padding:16px 14px;overflow-x:auto}
+.grid-wide table{min-width:290px}
+.grid-wide th,.grid-wide td{padding:7px 6px;white-space:nowrap}
 .stat .k{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:6px}
 .stat .v{font-family:'Anton',sans-serif;font-size:30px;line-height:1;margin-bottom:4px}
 .stat .who{font-size:13px;color:var(--paper)}
@@ -538,6 +533,7 @@ const MANUAL_HISTORY = [
 const API = 'https://api.sleeper.app/v1';
 const $  = s => document.querySelector(s);
 const el = (t,c,h) => { const n=document.createElement(t); if(c)n.className=c; if(h!==undefined)n.innerHTML=h; return n; };
+const num0 = n => (n===null||n===undefined||isNaN(n)) ? '\u2014' : Math.round(n).toLocaleString('en-US');
 const fmt = (n,d=1) => (n===null||n===undefined||isNaN(n)) ? '—' : Number(n).toFixed(d);
 const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -707,10 +703,19 @@ async function loadSeason(lg){
     const thirdGame = wb.find(m => m.p === 3);
     if(thirdGame && thirdGame.w) third = who(thirdGame.w);
 
-    // Anyone appearing in the winners bracket made the playoffs.
+    // Playoff qualifiers = the seeded teams only. Rounds 1 and 2 hold the whole
+    // field (round 1 is the opening games; teams with a bye first appear in
+    // round 2). Later rounds contain placement games that can drag in teams
+    // which never qualified, so sweeping the whole bracket over-counts.
+    // t1/t2 are also sometimes objects like {w:3} meaning "winner of match 3" —
+    // only plain numeric roster ids are real entrants.
     const ids = new Set();
-    wb.forEach(m => { [m.t1, m.t2, m.w, m.l].forEach(x => { if(x) ids.add(x); }); });
+    wb.filter(m => m.r === 1 || m.r === 2).forEach(m => {
+      [m.t1, m.t2].forEach(x => { if(typeof x === 'number') ids.add(x); });
+    });
     playoffTeams = [...ids].map(who).filter(Boolean);
+    const cap = (lg.settings && lg.settings.playoff_teams) || 0;
+    if(cap && playoffTeams.length > cap) playoffTeams = playoffTeams.slice(0, cap);
   }catch(e){}
 
   // consolation (losers) bracket
@@ -1084,11 +1089,24 @@ function buildForecast(allSeasons){
 }
 
 function buildRecords(seasons, scope){
-  // scope: 'all' | 'reg' | 'post'
-  const keep = w => scope==='reg' ? !w.isPlayoff : scope==='post' ? w.isPlayoff : true;
+  // scope: 'all' | 'reg' | 'post' (championship bracket) | 'cons' (consolation)
+  const keep = w => (scope==='reg') ? !w.isPlayoff
+                  : (scope==='post'||scope==='cons') ? w.isPlayoff : true;
+  // A playoff-week game is a championship game only when BOTH teams qualified;
+  // anything else that week belongs to the consolation bracket.
+  const isChamp = (s,g) => {
+    const po = new Set(s.playoffTeams||[]);
+    const A=s.byRoster[g.a.rosterId], B=s.byRoster[g.b.rosterId];
+    return !!(A && B && po.has(A.manager) && po.has(B.manager));
+  };
+  const keepGame = (s,g) => scope==='post' ? isChamp(s,g)
+                          : scope==='cons' ? !isChamp(s,g) : true;
   const r = { high:null, low:null, blowout:null, close:null, highLoss:null, lowWin:null, combo:null };
   seasons.forEach(s => s.weeks.filter(keep).forEach(w => {
-    w.games.forEach(g => {
+    const games = w.games.filter(g => keepGame(s,g));
+    const live = new Set();
+    games.forEach(g => { live.add(g.a.rosterId); live.add(g.b.rosterId); });
+    games.forEach(g => {
       const A=s.byRoster[g.a.rosterId], B=s.byRoster[g.b.rosterId];
       if(!A||!B) return;
       const hi = g.a.points>=g.b.points ? {t:A,p:g.a.points,o:B,op:g.b.points} : {t:B,p:g.b.points,o:A,op:g.a.points};
@@ -1101,7 +1119,7 @@ function buildRecords(seasons, scope){
       if(!r.lowWin  || hi.p<r.lowWin.points)  r.lowWin ={points:hi.p, who:hi.t.manager, ...ctx};
       if(!r.combo   || tot>r.combo.total)     r.combo  ={total:tot, a:A.manager, b:B.manager, ...ctx};
     });
-    w.allScores.forEach(x => {
+    w.allScores.filter(x => live.has(x.rosterId)).forEach(x => {
       const T=s.byRoster[x.rosterId]; if(!T||!x.points) return;
       const ctx={season:s.season,week:w.week};
       if(!r.high || x.points>r.high.points) r.high={points:x.points, who:T.manager, ...ctx};
@@ -1325,7 +1343,7 @@ function renderAllTime(){
     {key:'wins',       label:'W',         cell:m=>m.wins},
     {key:'losses',     label:'L',         cell:m=>m.losses},
     {key:'winPct',     label:'Win%',      cell:m=>(m.winPct*100).toFixed(1)},
-    {key:'pf',         label:'PF',        cell:m=>fmt(m.pf,0)},
+    {key:'pf',         label:'PF',        cell:m=>num0(m.pf)},
     {key:'ppg',        label:'PPG',       cell:m=>fmt(m.ppg)},
     {key:'scoreIndex', label:'Score+',    cell:m=>m.scoreIndex===null?'—':`<span class="${m.scoreIndex>=100?'pos':'neg'}">${m.scoreIndex.toFixed(0)}</span>`},
     {key:'allPlayPct', label:'All-play%', cell:m=>m.allPlayPct===null?'—':(m.allPlayPct*100).toFixed(1)},
@@ -1793,7 +1811,7 @@ function renderRecords(){
   };
 
   group('Regular season', STATE.recReg);
-  group('Playoffs', STATE.recPost, 'Championship and consolation bracket games only. Teams eliminated from both brackets are excluded — they are not playing, even though Sleeper still reports a score for them.');
+  group('Championship playoffs', STATE.recPost, 'Games between qualified teams only. Consolation-bracket results are kept separate, below.');
 
   const rows=Object.values(STATE.managers).filter(m=>m.best).sort((a,b)=>b.best.points-a.best.points);
   if(rows.length) p.appendChild(el('h2',null,'Best single week, by manager'));
@@ -1814,7 +1832,7 @@ function renderRecords(){
   if(scorers.length >= 2){
     p.appendChild(el('h2',null,'Scoring, best and worst'));
     p.appendChild(el('div','small muted','Ranked by Score+ — scoring relative to each season\'s league average, where 100 is average. Raw PPG is shown too, but it is not comparable across seasons: the league has used half PPR, full PPR and whatever the NFL.com years ran, and a full-PPR season inflates every score in it.'));
-    const wrap=el('div','grid');
+    const wrap=el('div','grid grid-wide');
     const mkList=(title, list, cls)=>{
       const c=el('div','card');
       c.appendChild(el('h3',null,title));
@@ -1894,6 +1912,23 @@ function renderRecords(){
       p.appendChild(el('div','small muted','Multiple consolation titles: '
         + multi.map(m=>`${esc(m.name)} (${m.consolations})`).join(', ')));
     }
+
+    const c = STATE.recCons;
+    if(c && c.high){
+      p.appendChild(el('div','small muted','Consolation records live down here rather than in the record book, on the grounds that nobody has ever brought one up unprompted.'));
+      const cg=el('div','grid');
+      const card=(k,v,who,when)=>{
+        const box=el('div','card stat');
+        box.innerHTML=`<div class="k">${k}</div><div class="v">${v}</div><div class="who">${esc(who)}</div><div class="when">${esc(when)}</div>`;
+        cg.appendChild(box);
+      };
+      const when=x=>`${x.season} week ${x.week}`;
+      card('Highest score', fmt(c.high.points), c.high.who, when(c.high));
+      card('Lowest score', fmt(c.low.points), c.low.who, when(c.low));
+      if(c.blowout) card('Biggest blowout', fmt(c.blowout.margin),
+        `${c.blowout.win} over ${c.blowout.lose}`, when(c.blowout));
+      p.appendChild(cg);
+    }
   }
 }
 
@@ -1942,6 +1977,16 @@ function renderData(){
   }
   t.appendChild(tb); p.appendChild(t);
 
+}
+
+/* ---------- tabs ---------- */
+/* ---------- header from config ---------- */
+$('#eyebrow').textContent = CONFIG.eyebrow;
+$('#tagline').textContent = CONFIG.tagline;
+if(CONFIG.logo){
+  const lg=$('#logo');
+  lg.src=CONFIG.logo; lg.alt=CONFIG.leagueName+' logo'; lg.hidden=false;
+  lg.addEventListener('error',()=>{ lg.hidden=true; console.warn('Logo not found:',CONFIG.logo); });
 }
 
 /* ---------- tabs ---------- */
