@@ -691,56 +691,87 @@ async function loadSeason(lg){
     weeks.push({ week:i+1, games, allScores:solo, isPlayoff:(i+1)>regEnd });
   });
 
-  // champion, third place and playoff field, all from the winners bracket
+  // ---- brackets -------------------------------------------------------------
+  // Sleeper does not always write the winner (`w`) into a bracket match, even
+  // when the game was played — the 2020 consolation final is one such case. So
+  // never trust `w` alone: when it is missing, decide the match from the actual
+  // scores of that playoff week. Playoff round r is played in week regEnd + r.
+  const whoT = rid => byRoster[rid] || null;
+  const whoN = rid => byRoster[rid] ? byRoster[rid].manager : null;
+
+  const scoreWinner = (round, a, b) => {
+    const wk = weeks.find(w => w.week === regEnd + round);
+    if(!wk) return null;
+    const g = wk.games.find(g =>
+      (g.a.rosterId===a && g.b.rosterId===b) || (g.a.rosterId===b && g.b.rosterId===a));
+    if(!g) return null;
+    const pa = g.a.rosterId===a ? g.a.points : g.b.points;
+    const pb = g.a.rosterId===b ? g.a.points : g.b.points;
+    if(pa===pb) return null;
+    return pa>pb ? {w:a, l:b} : {w:b, l:a};
+  };
+
+  // Returns {w,l} for a bracket match, from `w` if present, otherwise from the
+  // week's scores. Returns null if the match genuinely has not been played.
+  const resolve = m => {
+    if(m && m.w) return {w:m.w, l:m.l};
+    if(m && typeof m.t1==='number' && typeof m.t2==='number')
+      return scoreWinner(m.r, m.t1, m.t2);
+    return null;
+  };
+
   let champion=null, runnerUp=null, third=null, playoffTeams=[];
   try{
     const wb = await getJSON(`${API}/league/${lg.league_id}/winners_bracket`) || [];
-    const who = rid => byRoster[rid] ? byRoster[rid].manager : null;
 
-    const final = wb.find(m => m.p === 1);
-    if(final && final.w){ champion = who(final.w); runnerUp = who(final.l); }
+    const fr = resolve(wb.find(m => m.p === 1));
+    if(fr){ champion = whoN(fr.w); runnerUp = whoN(fr.l); }
 
-    const thirdGame = wb.find(m => m.p === 3);
-    if(thirdGame && thirdGame.w) third = who(thirdGame.w);
+    const tr = resolve(wb.find(m => m.p === 3));
+    if(tr) third = whoN(tr.w);
 
-    // Playoff qualifiers = the seeded teams only. Rounds 1 and 2 hold the whole
-    // field (round 1 is the opening games; teams with a bye first appear in
-    // round 2). Later rounds contain placement games that can drag in teams
-    // which never qualified, so sweeping the whole bracket over-counts.
-    // t1/t2 are also sometimes objects like {w:3} meaning "winner of match 3" —
-    // only plain numeric roster ids are real entrants.
+    // Playoff qualifiers are the seeded teams only: rounds 1 and 2 hold the
+    // whole field (round 1 is the opening games, byes first appear in round 2).
+    // Later rounds hold placement games that can drag in teams which never
+    // qualified. t1/t2 are sometimes objects like {w:3} meaning "winner of
+    // match 3" — only plain numeric roster ids are real entrants. And Sleeper
+    // publishes a seeded skeleton before a season is played, so require at
+    // least one match to have actually resolved.
+    const bracketLive = wb.some(m => resolve(m));
     const ids = new Set();
-    wb.filter(m => m.r === 1 || m.r === 2).forEach(m => {
-      [m.t1, m.t2].forEach(x => { if(typeof x === 'number') ids.add(x); });
-    });
-    playoffTeams = [...ids].map(who).filter(Boolean);
+    if(bracketLive){
+      wb.filter(m => m.r === 1 || m.r === 2).forEach(m => {
+        [m.t1, m.t2].forEach(x => { if(typeof x === 'number') ids.add(x); });
+      });
+    }
+    playoffTeams = [...ids].map(whoN).filter(Boolean);
     const cap = (lg.settings && lg.settings.playoff_teams) || 0;
     if(cap && playoffTeams.length > cap) playoffTeams = playoffTeams.slice(0, cap);
   }catch(e){}
 
-  // consolation (losers) bracket
-  let consolationWinner=null, consolationRunnerUp=null, bottomPair=null;
+  let consolationWinner=null, consolationRunnerUp=null, bottomPair=null, consolationPending=[];
   try{
     const lb = await getJSON(`${API}/league/${lg.league_id}/losers_bracket`) || [];
-    const who = rid => byRoster[rid] || null;
 
-    // p === 1 marks that bracket's own final. Not every season sets `p`, so
-    // fall back to the last match played in the bracket (highest round).
     let cf = lb.find(m => m.p === 1);
     if(!cf && lb.length){
       const maxR = lb.reduce((mx,m) => (typeof m.r === 'number' && m.r > mx) ? m.r : mx, 0);
-      cf = lb.filter(m => m.r === maxR && m.w).sort((a,b)=>(a.m||0)-(b.m||0))[0];
+      cf = lb.filter(m => m.r === maxR).sort((a,b)=>(a.m||0)-(b.m||0))[0];
     }
-    if(cf && cf.w){
-      consolationWinner   = who(cf.w) ? who(cf.w).manager : null;
-      consolationRunnerUp = who(cf.l) ? who(cf.l).manager : null;
+    const cr = resolve(cf);
+    if(cr){
+      consolationWinner   = whoT(cr.w) ? whoT(cr.w).manager : null;
+      consolationRunnerUp = whoT(cr.l) ? whoT(cr.l).manager : null;
+    } else if(cf){
+      consolationPending = [cf.t1, cf.t2].filter(x => typeof x === 'number')
+                             .map(whoN).filter(Boolean);
     }
 
-    // the highest placement number is the game that settles dead last
+    // highest placement number settles dead last
     const maxP = lb.reduce((mx,m) => (typeof m.p === 'number' && m.p > mx) ? m.p : mx, 0);
     if(maxP){
-      const g = lb.find(m => m.p === maxP);
-      if(g && g.l && who(g.l) && who(g.w)) bottomPair = [who(g.w), who(g.l)];
+      const g = resolve(lb.find(m => m.p === maxP));
+      if(g && whoT(g.w) && whoT(g.l)) bottomPair = [whoT(g.w), whoT(g.l)];
     }
   }catch(e){}
 
@@ -766,7 +797,7 @@ async function loadSeason(lg){
   return {
     season:+lg.season, source:'sleeper', leagueId:lg.league_id, name:lg.name,
     teams, byRoster, weeks, schedule, regEnd, champion, runnerUp, draft,
-    consolationWinner, consolationRunnerUp, bottomPair, third, playoffTeams,
+    consolationWinner, consolationRunnerUp, consolationPending, bottomPair, third, playoffTeams,
     teamCount: teams.length,
     // If a league plays an extra weekly game against the league median, the
     // official W-L will not match what the head-to-head matchups alone imply.
@@ -792,7 +823,7 @@ function buildManual(){
       season:+h.season, source:'manual', name:CONFIG.leagueName,
       teams, byRoster:{}, weeks:[], regEnd:null,
       champion: champ?champ.manager:null, runnerUp: ru?ru.manager:null,
-      consolationWinner:null, consolationRunnerUp:null, bottomPair:null, schedule:[],
+      consolationWinner:null, consolationRunnerUp:null, consolationPending:[], bottomPair:null, schedule:[],
       third: trd?trd.manager:null,
       playoffTeams: h.playoffSpots
         ? teams.filter(t => t.finish && t.finish <= h.playoffSpots).map(t => t.manager)
@@ -1896,7 +1927,8 @@ function renderRecords(){
   }
 
   // ---- consolation bracket ----
-  const cons = STATE.seasons.filter(s=>s.consolationWinner).sort((a,b)=>b.season-a.season);
+  const cons = STATE.seasons.filter(s=>s.consolationWinner || (s.consolationPending||[]).length)
+                            .sort((a,b)=>b.season-a.season);
   if(cons.length){
     p.appendChild(el('h2',null,'Consolation bracket'));
     p.appendChild(el('div','small muted','Winners of the losers bracket — the best of the teams that missed the playoffs.'));
@@ -1904,9 +1936,15 @@ function renderRecords(){
     t3.innerHTML='<thead><tr><th>Season</th><th>Consolation winner</th><th>Beat</th></tr></thead>';
     const tb3=el('tbody');
     cons.forEach(s=>{
-      tb3.innerHTML+=`<tr><td class="name num">${s.season}</td>
-        <td style="text-align:right" class="cons">${esc(s.consolationWinner)}</td>
-        <td class="muted">${esc(s.consolationRunnerUp||'—')}</td></tr>`;
+      if(s.consolationWinner){
+        tb3.innerHTML+=`<tr><td class="name num">${s.season}</td>
+          <td style="text-align:right" class="cons">${esc(s.consolationWinner)}</td>
+          <td class="muted">${esc(s.consolationRunnerUp||'—')}</td></tr>`;
+      } else {
+        tb3.innerHTML+=`<tr><td class="name num">${s.season}</td>
+          <td style="text-align:right" class="muted">final never played</td>
+          <td class="muted">${esc(s.consolationPending.join(' v '))}</td></tr>`;
+      }
     });
     t3.appendChild(tb3); p.appendChild(t3);
 
@@ -1919,7 +1957,7 @@ function renderRecords(){
 
     const c = STATE.recCons;
     if(c && c.high){
-      p.appendChild(el('div','small muted','Consolation records live down here rather than in the record book, on the grounds that nobody has ever brought one up unprompted.'));
+      p.appendChild(el('div','small muted','Consolation records live down here rather than in the record book. In 2020 the bracket reached its final and simply was never played, which tells you everything about how much this trophy is worth.'));
       const cg=el('div','grid');
       const card=(k,v,who,when)=>{
         const box=el('div','card stat');
