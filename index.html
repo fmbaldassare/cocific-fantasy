@@ -202,6 +202,13 @@ table.matrix td,table.matrix th{padding:6px;font-size:12px;text-align:center}
 table.matrix th.rowh,table.matrix td.rowh{text-align:left;position:sticky;left:0;background:var(--ink);z-index:1;white-space:nowrap}
 table.matrix td.self{background:var(--ink3);color:var(--ghost)}
 
+.trash{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}
+.trash-line{
+  background:var(--ink2);border:1px solid var(--line);border-left:3px solid var(--amber);
+  border-radius:2px;padding:11px 14px;font-size:14px;line-height:1.45;
+}
+.trash-line:nth-child(even){border-left-color:var(--rose)}
+
 /* odds bar */
 .oddsbar{display:block;height:5px;background:var(--ink3);border-radius:3px;overflow:hidden;margin-bottom:4px;min-width:70px}
 .oddsbar span{display:block;height:100%;background:linear-gradient(90deg,var(--amber-dk),var(--amber))}
@@ -257,7 +264,7 @@ a{color:var(--amber)}
   <button role="tab" data-p="alltime" aria-selected="false">All-Time</button>
   <button role="tab" data-p="h2h" aria-selected="false">Head-to-Head</button>
   <button role="tab" data-p="records" aria-selected="false">Records</button>
-  <button role="tab" data-p="forecast" aria-selected="false">Forecast</button>
+  <button role="tab" data-p="forecast" aria-selected="false">This Season</button>
   <button role="tab" data-p="shame" aria-selected="false">Shame</button>
   <button role="tab" data-p="drafts" aria-selected="false">Drafts</button>
   <button role="tab" data-p="data" aria-selected="false">Data</button>
@@ -295,7 +302,7 @@ const CONFIG = {
   // 'logo.png'. A full https:// URL works too. Leave '' for no logo.
   logo            : 'logo.png',
 
-  eyebrow         : 'Est. 2015 · 18 managers · two platforms',
+  eyebrow         : 'Est. 2015 · 18 managers',
 
   // How dead last is decided:
   //   'standings'   — worst regular-season record (this is Cocific's rule)
@@ -755,7 +762,8 @@ async function loadSeason(lg){
     // official W-L will not match what the head-to-head matchups alone imply.
     medianMatch: !!(lg.settings && lg.settings.league_average_match),
     playoffTeamCount: (lg.settings && lg.settings.playoff_teams) || null,
-    scoring: (lg.scoring_settings && lg.scoring_settings.rec) ? `${lg.scoring_settings.rec} PPR` : 'standard'
+    scoring: (r => r===1 ? 'full PPR' : r===0.5 ? 'half PPR' : !r ? 'no PPR' : `${r} PPR`)
+             (lg.scoring_settings && lg.scoring_settings.rec)
   };
 }
 
@@ -1189,22 +1197,21 @@ function renderOverview(){
     p.appendChild(el('div','empty','No champions recorded yet. Sleeper fills these in once a playoff bracket completes; earlier years come from the manual history block.'));
   } else {
     const t=el('table');
-    t.innerHTML='<thead><tr><th>Season</th><th>Champion</th><th>Runner-up</th><th>Consolation</th><th>Teams</th></tr></thead>';
+    t.innerHTML='<thead><tr><th>Season</th><th>Champion</th><th>Runner-up</th><th>Consolation</th></tr></thead>';
     const tb=el('tbody');
     champs.forEach(s=>{
-      tb.innerHTML+=`<tr><td class="name num">${s.season}${s.source==='manual'?'<span class="tag manual">manual</span>':''}</td>
+      tb.innerHTML+=`<tr><td class="name num">${s.season}</td>
         <td class="champ" style="text-align:right">${esc(s.champion)}</td>
         <td>${esc(s.runnerUp||'—')}</td>
-        <td class="muted small">${esc(s.consolationWinner||'—')}</td>
-        <td class="num">${s.teamCount}</td></tr>`;
+        <td class="muted small">${esc(s.consolationWinner||'—')}</td></tr>`;
     });
     t.appendChild(tb); p.appendChild(t);
   }
 
   p.appendChild(el('h2',null,'Eras'));
   const e=el('div','card small muted');
-  e.innerHTML = `<p style="margin-top:0"><b style="color:var(--paper)">2015\u20132019 &middot; NFL.com</b> \u2014 10 managers in 2015, 14 from 2016 onward, four playoff spots. Scoring was standard in 2015, full PPR in 2016, half PPR from 2017. The 2020 NFL.com season was never activated; the league moved to Sleeper instead. These seasons come from the league's own historical spreadsheet, which recorded final standings, records and regular-season points \u2014 but not weekly scores and not points against. So they appear in standings, championships, punishments and all-time records, and are deliberately absent from anything built on individual matchups: weekly records, head-to-head, the bowls, all-play and luck.</p>
-    <p style="margin-bottom:0"><b style="color:var(--paper)">2020\u2013present &middot; Sleeper</b> \u2014 loaded live from the API, half PPR throughout, four playoff spots through 2023 and six from 2024. Because the scoring format changed over the league's history, raw points are not comparable across seasons. Score+ on the All-Time tab restates each team's scoring against its own season's league average, and is the fair way to compare across eras.</p>`;
+  e.innerHTML = `<p style="margin-top:0"><b style="color:var(--paper)">2015\u20132019 &middot; NFL.com</b> \u2014 10 managers el 2015, 14 desde el 2016, cuatro cupos a playoffs. El puntaje fue est\u00e1ndar el 2015, full PPR el 2016 y half PPR desde el 2017. La temporada 2020 nunca se activ\u00f3 en NFL.com: la liga se mud\u00f3 a Sleeper. Estos a\u00f1os vienen de la planilla hist\u00f3rica de la liga, que guard\u00f3 posiciones finales, r\u00e9cords y puntos de temporada regular, pero no los marcadores semana a semana ni los puntos en contra. Por eso aparecen en tablas, campeonatos, castigos y r\u00e9cords hist\u00f3ricos, y no aparecen en nada que dependa de partidos individuales: r\u00e9cords semanales, head-to-head, los bowls, all-play y suerte.</p>
+    <p style="margin-bottom:0"><b style="color:var(--paper)">2020\u2013hoy &middot; Sleeper</b> \u2014 se carga en vivo desde la API, half PPR en todas las temporadas, cuatro cupos a playoffs hasta el 2023 y seis desde el 2024. Como el formato de puntaje cambi\u00f3 en la historia de la liga, los puntos brutos no son comparables entre temporadas. Score+ en la pesta\u00f1a All-Time recalcula el puntaje de cada equipo contra el promedio de su propia temporada, y es la forma justa de comparar entre eras.</p>`;
   p.appendChild(e);
 }
 
@@ -1446,10 +1453,166 @@ function renderH2H(){
   t.appendChild(tb); wrap.appendChild(t); p.appendChild(wrap);
 }
 
+
+/* ---------- trash talk --------------------------------------------------------
+   Every line is generated from the data, not written by hand — a rule only fires
+   when its condition is actually true. Add or edit freely; each rule pushes a
+   string, and nothing appears unless the underlying numbers say it should.
+----------------------------------------------------------------------------- */
+function trashShame(){
+  const out=[];
+  const {rows, tally} = STATE.shame;
+  if(!rows.length) return out;
+  const n = v => esc(v);
+
+  // serial offender
+  const worst = tally.filter(t=>t.last>0).sort((a,b)=>b.last-a.last)[0];
+  if(worst && worst.last>=2)
+    out.push(`${n(worst.name)} has finished dead last ${worst.last} times. At this point it is not a punishment, it is a career.`);
+
+  // back-to-back last place
+  const lastBy = {};
+  rows.filter(r=>r.last).forEach(r => (lastBy[r.last.manager]=lastBy[r.last.manager]||[]).push(r.season));
+  Object.entries(lastBy).forEach(([m,yrs])=>{
+    const sorted=yrs.slice().sort((a,b)=>a-b);
+    for(let i=1;i<sorted.length;i++) if(sorted[i]-sorted[i-1]===1){
+      out.push(`${n(m)} finished last in ${sorted[i-1]} and came back to do it again in ${sorted[i]}. Consistency is consistency.`);
+      break;
+    }
+  });
+
+  // plenty of bottom-two finishes, never actually last
+  const nearly = tally.filter(t=>t.last===0 && t.bottom2>=2).sort((a,b)=>b.bottom2-a.bottom2)[0];
+  if(nearly)
+    out.push(`${n(nearly.name)} has been in the bottom two ${nearly.bottom2} times without ever finishing last. Cannot even lose properly.`);
+
+  // scores well, finishes badly
+  const choker = Object.values(STATE.managers)
+    .filter(m => m.scoreIndex!==null && m.scoreIndex>=101 && tally.find(t=>t.name===m.name && t.bottom2>0))
+    .sort((a,b)=>b.scoreIndex-a.scoreIndex)[0];
+  if(choker)
+    out.push(`${n(choker.name)} outscores the league average (Score+ ${choker.scoreIndex.toFixed(0)}) and still found the basement. Talent is not enough when the schedule hates you — or when you set the wrong lineup.`);
+
+  // the untouched
+  const clean = Object.values(STATE.managers)
+    .filter(m => m.seasons>=3 && !tally.find(t=>t.name===m.name));
+  if(clean.length===1)
+    out.push(`${n(clean[0].name)} is the only manager with three or more seasons who has never been in the bottom two. Somebody should audit that.`);
+  else if(clean.length>1)
+    out.push(`${clean.length} managers have never touched the bottom two: ${clean.map(m=>n(m.name)).join(', ')}. Enjoy it while it lasts.`);
+
+  // the soft era
+  const susp = rows.filter(r => r.punishment && r.punishment.shared &&
+                                /suspend/i.test(r.punishment.shared)).map(r=>r.season);
+  if(susp.length>=2)
+    out.push(`Punishments suspended since ${Math.min(...susp)}. ${susp.length} years of impunity. This league has gone soft.`);
+
+  // finished last while scoring near the top
+  rows.filter(r=>r.last).forEach(r=>{
+    const s = STATE.seasons.find(x=>x.season===r.season);
+    if(!s) return;
+    const g = t => t.wins+t.losses+t.ties;
+    const ranked = s.teams.filter(t=>g(t)).sort((a,b)=>b.pf-a.pf);
+    const idx = ranked.findIndex(t=>t.manager===r.last.manager);
+    if(idx>=0 && idx < Math.max(2, Math.floor(ranked.length/4)))
+      out.push(`In ${r.season}, ${n(r.last.manager)} finished last while ranking ${idx+1}${idx===0?'st':idx===1?'nd':idx===2?'rd':'th'} in points. That is not bad luck, that is a gift.`);
+  });
+
+  return out;
+}
+
+function trashSeason(f){
+  const out=[];
+  if(!f) return out;
+  const cur = STATE.allSeasons.filter(s=>s.source==='sleeper').pop();
+  const n = v => esc(v);
+
+  if(f.weeksPlayed===0){
+    const prev = STATE.allSeasons.filter(s=>s.champion).sort((a,b)=>b.season-a.season)[0];
+    const prevShame = STATE.shame.rows.find(r=>prev && r.season===prev.season && r.last);
+    out.push(`Season ${f.season}: zero weeks played, zero excuses so far. Enjoy it — this is the only moment all year when everyone is undefeated.`);
+    if(prev) out.push(`${n(prev.champion)} defends the ${prev.season} title. History says nobody in this league has ever repeated.`);
+    if(prevShame) out.push(`${n(prevShame.last.manager)} arrives fresh off finishing last in ${prevShame.season}. The bar is low: just do not be him.`);
+    return out;
+  }
+
+  const rec = {};
+  cur.weeks.filter(w=>!w.isPlayoff).forEach(w => w.games.forEach(g=>{
+    const A=cur.byRoster[g.a.rosterId], B=cur.byRoster[g.b.rosterId];
+    if(!A||!B) return;
+    [[A,g.a.points,g.b.points],[B,g.b.points,g.a.points]].forEach(([t,pf,pa])=>{
+      const r = rec[t.manager] = rec[t.manager]||{w:0,l:0,pf:0,pa:0,scores:[]};
+      r.pf+=pf; r.pa+=pa; r.scores.push(pf);
+      if(pf>pa) r.w++; else if(pf<pa) r.l++;
+    });
+  }));
+  const list = Object.entries(rec).map(([m,r])=>({m,...r,ppg:r.pf/r.scores.length}));
+  if(!list.length) return out;
+
+  const undef = list.filter(x=>x.l===0);
+  const winless = list.filter(x=>x.w===0);
+  if(undef.length===1) out.push(`${n(undef[0].m)} is still undefeated. Long way to go, but let him have this one.`);
+  if(winless.length===1) out.push(`${n(winless[0].m)} still has not won a game. At some point the question stops being about the roster.`);
+  else if(winless.length>1) out.push(`${winless.length} teams are still winless: ${winless.map(x=>n(x.m)).join(', ')}. Someone has to break the streak, ideally against one of the others.`);
+
+  const byPts = list.slice().sort((a,b)=>b.pf-a.pf);
+  const byRec = list.slice().sort((a,b)=>b.w-a.w || b.pf-a.pf);
+  const ord = i => i===1?'1st':i===2?'2nd':i===3?'3rd':i+'th';
+
+  const topScorer = byPts[0];
+  const posInRec = byRec.findIndex(x=>x.m===topScorer.m)+1;
+  if(posInRec > Math.ceil(list.length/2))
+    out.push(`${n(topScorer.m)} has scored more points than anyone and sits ${ord(posInRec)} in the standings. The schedule has something personal against him.`);
+
+  const leader = byRec[0];
+  const leaderPtsRank = byPts.findIndex(x=>x.m===leader.m)+1;
+  if(leaderPtsRank > Math.ceil(list.length/2))
+    out.push(`${n(leader.m)} leads the league while ranking ${ord(leaderPtsRank)} in points. Winning that way is its own art form, but he should not get comfortable.`);
+
+  const lw = cur.weeks.filter(w=>!w.isPlayoff).pop();
+  if(lw){
+    const scores = lw.allScores.map(x=>({m:cur.byRoster[x.rosterId] ? cur.byRoster[x.rosterId].manager : '?', p:x.points}))
+                               .sort((a,b)=>b.p-a.p);
+    if(scores.length){
+      out.push(`Week ${lw.week}: ${n(scores[0].m)} put up ${fmt(scores[0].p)} and ${n(scores[scores.length-1].m)} managed ${fmt(scores[scores.length-1].p)}. One of them checked their lineup.`);
+      let big=null, unlucky=null;
+      lw.games.forEach(g=>{
+        const A=cur.byRoster[g.a.rosterId], B=cur.byRoster[g.b.rosterId];
+        if(!A||!B) return;
+        const marg=Math.abs(g.a.points-g.b.points);
+        const hi = g.a.points>=g.b.points ? [A,g.a.points,B,g.b.points] : [B,g.b.points,A,g.a.points];
+        if(!big || marg>big.marg) big={marg, w:hi[0].manager, l:hi[2].manager};
+        if(!unlucky || hi[3]>unlucky.p) unlucky={m:hi[2].manager, p:hi[3], by:hi[0].manager};
+      });
+      if(big && big.marg>30) out.push(`${n(big.w)} ran straight over ${n(big.l)} by ${fmt(big.marg)}. That was not a matchup, it was an errand.`);
+      if(unlucky) out.push(`${n(unlucky.m)} scored ${fmt(unlucky.p)} and lost anyway, to ${n(unlucky.by)}. Welcome to fantasy football.`);
+    }
+  }
+
+  if(f.weeksPlayed>=3 && f.rows.length){
+    const dead = f.rows.filter(r=>r.odds<0.05);
+    if(dead.length) out.push(`${f.weeksPlayed} weeks in and ${dead.map(r=>n(r.manager)).join(', ')} ${dead.length===1?'is':'are'} under 5% to make the playoffs. Mathematically alive, spiritually not.`);
+    const lock = f.rows.filter(r=>r.odds>0.9);
+    if(lock.length) out.push(`${lock.map(r=>n(r.manager)).join(', ')} ${lock.length===1?'is':'are'} above 90% to qualify. Plenty of season left, but everyone else can start reading up on next year's draft.`);
+  }
+  return out;
+}
+
+function renderTrash(p, lines, title){
+  if(!lines.length) return;
+  p.appendChild(el('h2',null,title||'Trash talk'));
+  p.appendChild(el('div','small muted','Generated from the data. If it stings, it is not personal — those are your own numbers.'));
+  const box=el('div','trash');
+  lines.forEach(t => box.appendChild(el('div','trash-line', t)));
+  p.appendChild(box);
+}
+
 function renderShame(){
   const p=$('#p-shame'); p.innerHTML='';
   const {rows, tally} = STATE.shame;
   if(!rows.length){ p.appendChild(el('div','empty','No completed seasons yet.')); return; }
+
+  renderTrash(p, trashShame(), 'Trash talk');
 
   p.appendChild(el('h2',null,'The cellar'));
   p.appendChild(el('div','small muted','Bottom two by final regular-season standings. Seasons settled another way can be pinned in the LAST_PLACE block at the top of the file.'));
@@ -1501,24 +1664,85 @@ function renderShame(){
 function renderForecast(){
   const p=$('#p-forecast'); p.innerHTML='';
   const f=STATE.forecast;
-  if(!f){ p.appendChild(el('div','empty','No current-season schedule available yet. Odds appear once Sleeper publishes the matchups.')); return; }
+  if(!f){ p.appendChild(el('div','empty','No current-season data available yet.')); return; }
+  const cur = STATE.allSeasons.filter(s=>s.source==='sleeper').pop();
 
-  p.appendChild(el('h2',null,`${f.season} playoff odds`));
-  p.appendChild(el('div','small muted','This tab always uses every season, whatever is selected in the strip above.'));
+  p.appendChild(el('h2',null,`${f.season} season`));
+  p.appendChild(el('div','small muted','This tab always covers the live season and ignores the season filter above.'));
 
+  /* ---- where things stand ---- */
+  if(f.weeksPlayed === 0){
+    const box=el('div','card');
+    box.innerHTML = `<div class="k" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:8px">Not started</div>
+      <div style="font-size:14px">${cur.teamCount} teams, ${cur.regEnd} regular-season weeks, top ${f.spots} make the playoffs.
+      Standings, weekly results and the odds below all come to life once week 1 is played.</div>`;
+    p.appendChild(box);
+  } else {
+    p.appendChild(el('h3',null,`Standings after week ${f.weeksPlayed}`));
+    const rec={};
+    cur.weeks.filter(w=>!w.isPlayoff).forEach(w=>w.games.forEach(g=>{
+      const A=cur.byRoster[g.a.rosterId], B=cur.byRoster[g.b.rosterId];
+      if(!A||!B) return;
+      [[A,g.a.points,g.b.points],[B,g.b.points,g.a.points]].forEach(([t,pf,pa])=>{
+        const r=rec[t.manager]=rec[t.manager]||{w:0,l:0,t:0,pf:0,pa:0,n:0};
+        r.pf+=pf; r.pa+=pa; r.n++;
+        if(pf>pa) r.w++; else if(pf<pa) r.l++; else r.t++;
+      });
+    }));
+    const rows=Object.entries(rec).map(([m,r])=>({m,...r}))
+      .sort((a,b)=>b.w-a.w || b.pf-a.pf);
+    const t=el('table');
+    t.innerHTML='<thead><tr><th></th><th>Manager</th><th>W</th><th>L</th><th>PF</th><th>PA</th><th>PPG</th></tr></thead>';
+    const tb=el('tbody');
+    rows.forEach((r,i)=>{
+      const inPo = i < f.spots;
+      tb.innerHTML+=`<tr><td class="rank">${i+1}</td>
+        <td class="name">${esc(r.m)}${inPo?' <span class="tag sleeper">PO</span>':''}</td>
+        <td class="num">${r.w}</td><td class="num">${r.l}</td>
+        <td class="num">${fmt(r.pf)}</td><td class="num">${fmt(r.pa)}</td>
+        <td class="num">${fmt(r.pf/r.n)}</td></tr>`;
+    });
+    t.appendChild(tb); p.appendChild(t);
+
+    /* ---- last week ---- */
+    const lw = cur.weeks.filter(w=>!w.isPlayoff).pop();
+    if(lw){
+      p.appendChild(el('h3',null,`Week ${lw.week} results`));
+      const ranked=lw.allScores.slice().sort((a,b)=>b.points-a.points);
+      const rankOf={}; ranked.forEach((x,i)=>rankOf[x.rosterId]=i+1);
+      lw.games.forEach(g=>{
+        const A=cur.byRoster[g.a.rosterId], B=cur.byRoster[g.b.rosterId]; if(!A||!B) return;
+        const aw=g.a.points>g.b.points, bw=g.b.points>g.a.points;
+        const d=el('div','game');
+        d.innerHTML=`
+          <div class="side"><span class="tm ${aw?'w':''}">${esc(A.manager)}</span>
+            <span class="muted small">#${rankOf[A.rosterId]} this week</span></div>
+          <div style="text-align:center"><div class="sc"><span class="${aw?'w':''}">${fmt(g.a.points)}</span> <span class="vs">—</span> <span class="${bw?'w':''}">${fmt(g.b.points)}</span></div></div>
+          <div class="side r"><span class="tm ${bw?'w':''}">${esc(B.manager)}</span>
+            <span class="muted small">#${rankOf[B.rosterId]} this week</span></div>`;
+        p.appendChild(d);
+      });
+    }
+  }
+
+  /* ---- trash talk ---- */
+  renderTrash(p, trashSeason(f), 'Trash talk');
+
+  /* ---- playoff odds ---- */
+  p.appendChild(el('h2',null,'Playoff odds'));
   const state = f.weeksPlayed === 0
-    ? `No games played yet. Every team starts at the league average of ${fmt(f.lgMean)} points per week, so these odds are driven only by the schedule — they are close to even by design. They start moving after week 1.`
+    ? `No games played yet. Every team starts at the league average of ${fmt(f.lgMean)} points per week, so these odds are driven only by the schedule and come out close to even by design. They start moving after week 1.`
     : `${f.weeksPlayed} week${f.weeksPlayed===1?'':'s'} played, ${f.weeksLeft} to go. ${f.sims.toLocaleString()} simulated seasons. Top ${f.spots} make the playoffs.`;
   p.appendChild(el('div','small muted',state));
 
-  const t=el('table');
-  t.innerHTML='<thead><tr><th></th><th>Manager</th><th>Record</th><th>PPG</th><th>Proj. wins</th><th>Avg seed</th><th>Top seed</th><th>Playoff odds</th></tr></thead>';
-  const tb=el('tbody');
+  const t2=el('table');
+  t2.innerHTML='<thead><tr><th></th><th>Manager</th><th>Record</th><th>PPG</th><th>Proj. wins</th><th>Avg seed</th><th>Top seed</th><th>Playoff odds</th></tr></thead>';
+  const tb2=el('tbody');
   f.rows.forEach((r,i)=>{
     const pct=(r.odds*100);
     const cls = pct>=75?'pos' : pct<=25?'neg' : '';
     const losses = r.games - r.wins;
-    tb.innerHTML+=`<tr>
+    tb2.innerHTML+=`<tr>
       <td class="rank">${i+1}</td>
       <td class="name">${esc(r.manager)}<div class="muted small">${esc(r.teamName)}</div></td>
       <td class="num">${r.games?`${r.wins}-${losses}`:'—'}</td>
@@ -1531,14 +1755,14 @@ function renderForecast(){
         <span class="${cls}">${pct.toFixed(1)}%</span>
       </td></tr>`;
   });
-  t.appendChild(tb); p.appendChild(t);
+  t2.appendChild(tb2); p.appendChild(t2);
 
-  p.appendChild(el('h3',null,'How this works'));
+  p.appendChild(el('h3',null,'How the odds work'));
   const m=el('div','card small muted');
   m.innerHTML = `
     <p style="margin-top:0">Each team's weekly score is drawn from a normal distribution: its own mean, and a league-wide standard deviation of <b style="color:var(--paper)">${fmt(f.lgSD)}</b> points measured across every completed Sleeper season. The remaining schedule is the real one, so a hard run of opponents shows up in the odds without being modelled separately.</p>
-    <p>A team's projected mean is not its raw average. Points per game is the best single predictor available, but it is unreliable over a handful of games, so the average is pulled toward the league mean of <b style="color:var(--paper)">${fmt(f.lgMean)}</b> — weighted as if the league average were ${f.K} extra games on the schedule. After three weeks a team is still mostly league-average; by week ten its own scoring dominates. Without that correction, a lucky week 1 would produce absurd forecasts.</p>
-    <p style="margin-bottom:0">Not modelled: individual players, injuries, bye weeks, trades, or how good the draft was. So before the season starts these numbers carry no real information, and they are worth reading from about week 4 onward.</p>`;
+    <p>A team's projected mean is not its raw average. Points per game is the best single predictor available, but unreliable over a handful of games, so the average is pulled toward the league mean of <b style="color:var(--paper)">${fmt(f.lgMean)}</b> — weighted as if the league average were ${f.K} extra games on the schedule. After three weeks a team is still mostly league-average; by week ten its own scoring dominates.</p>
+    <p style="margin-bottom:0">Not modelled: individual players, injuries, bye weeks, trades, or how good the draft was. These numbers are worth reading from about week 4 onward.</p>`;
   p.appendChild(m);
 }
 
@@ -1718,34 +1942,6 @@ function renderData(){
   }
   t.appendChild(tb); p.appendChild(t);
 
-  p.appendChild(el('h2',null,'Adding the NFL.com years'));
-  const d=el('div','card small');
-  d.innerHTML=`<p style="margin-top:0">Open this file in a text editor and fill in <code>MANUAL_HISTORY</code> near the top. One block per season:</p>
-<pre>{
-  season: 2019,
-  teams: [
-    { manager:'Francesco', wins:9, losses:5, ties:0, pf:1587.2, pa:1440.8, finish:3 }
-  ],
-  notes: '14 teams, half-PPR'
-}</pre>
-<p>Add what you know and leave the rest — a season with only final records still counts toward all-time standings and turns its bar solid up top. <code>finish:1</code> marks the champion.</p>
-<p style="margin-bottom:0">If two team names belong to the same person, map them in <code>IDENTITY</code> so their all-time record stays in one row.</p>`;
-  p.appendChild(d);
-
-  p.appendChild(el('h2',null,'How this page gets its data'));
-  const d2=el('div','card small muted');
-  d2.innerHTML=`<p style="margin-top:0">Sleeper seasons are fetched live from <code>api.sleeper.app</code> every time the page loads, walking backwards through <code>previous_league_id</code> from the current league. Nothing is cached and nothing is stored — refresh and you have current standings.</p>
-  <p style="margin-bottom:0">That also means this page needs an internet connection, and the Sleeper half updates itself for free as new seasons are played.</p>`;
-  p.appendChild(d2);
-}
-
-/* ---------- header from config ---------- */
-$('#eyebrow').textContent = CONFIG.eyebrow;
-$('#tagline').textContent = CONFIG.tagline;
-if(CONFIG.logo){
-  const lg=$('#logo');
-  lg.src=CONFIG.logo; lg.alt=CONFIG.leagueName+' logo'; lg.hidden=false;
-  lg.addEventListener('error',()=>{ lg.hidden=true; console.warn('Logo not found:',CONFIG.logo); });
 }
 
 /* ---------- tabs ---------- */
