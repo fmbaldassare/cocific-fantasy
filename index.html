@@ -286,7 +286,7 @@ const CONFIG = {
   // 'logo.png'. A full https:// URL works too. Leave '' for no logo.
   logo            : 'logo.png',
 
-  eyebrow         : 'Est. 2015 · 16 managers · two platforms',
+  eyebrow         : 'Est. 2015 · 18 managers · two platforms',
 
   // How dead last is decided:
   //   'standings'   — worst regular-season record (this is Cocific's rule)
@@ -295,7 +295,7 @@ const CONFIG = {
   lastPlaceRule   : 'standings',
 
   // The paragraph under the title. Edit freely.
-  tagline         : 'Doce temporadas. Dieciséis managers. Un solo registro. '
+  tagline         : 'Doce temporadas. Dieciocho managers. Un solo registro. '
                   + 'Lo que algunos intentaron borrar sobrevivió a pandemias, '
                   + 'estallidos y toda clase de incivilidades, y desde hoy queda '
                   + 'en la nube. Inspirado en las tablitas de JTA.'
@@ -429,14 +429,90 @@ const CO_OWNERS = {
    Partial seasons are fine — add what you know, leave the rest.
    ------------------------------------------------------------------------- */
 const MANUAL_HISTORY = [
-  // {
-  //   season: 2020,
-  //   teams: [
-  //     { manager:'Francesco', wins:9, losses:5, ties:0, pf:1587.2, pa:1440.8, finish:3 },
-  //     { manager:'Someone',   wins:11, losses:3, ties:0, pf:1702.4, pa:1388.1, finish:1 }
-  //   ],
-  //   notes: '14 teams, half-PPR'
-  // },
+  // The NFL.com years, reconstructed from the league's own historical
+  // spreadsheet (Fantasy_Historico.xlsx). Points are regular-season totals;
+  // `finish` is the final standing including playoffs. Points against were not
+  // recorded in that era, so PA and point differential show as blank.
+  { season: 2015, scoring: 'no PPR', playoffSpots: 4, teams: [
+      { manager:'diego678', wins:11, losses:3, ties:0, pf:1315.66, finish:1 },
+      { manager:'jtalvarino', wins:10, losses:4, ties:0, pf:1535.54, finish:2 },
+      { manager:'FM17', wins:9, losses:5, ties:0, pf:1416.26, finish:3 },
+      { manager:'nlarrain', wins:7, losses:7, ties:0, pf:1378.22, finish:4 },
+      { manager:'dvelarde', wins:6, losses:8, ties:0, pf:1218.1, finish:5 },
+      { manager:'NegroCastro', wins:6, losses:8, ties:0, pf:1303.58, finish:6 },   // W-L derived from season totals
+      { manager:'ncastro', wins:6, losses:8, ties:0, pf:1323.2, finish:7 },
+      { manager:'N. Mora', wins:5, losses:9, ties:0, pf:1365.28, finish:8 },
+      { manager:'fbaldassare', wins:5, losses:9, ties:0, pf:1301.78, finish:9 },
+      { manager:'M. Araos', wins:5, losses:9, ties:0, pf:1224.6, finish:10 }
+  ] },
+
+  { season: 2016, scoring: 'full PPR', playoffSpots: 4, teams: [
+      { manager:'fjgonzalezb', wins:9, losses:5, ties:0, pf:1493.18, finish:1 },
+      { manager:'N. Mora', wins:10, losses:4, ties:0, pf:1803.42, finish:2 },
+      { manager:'fbaldassare', wins:10, losses:4, ties:0, pf:1618.04, finish:3 },
+      { manager:'Rura', wins:8, losses:6, ties:0, pf:1607.12, finish:4 },
+      { manager:'nlarrain', wins:8, losses:6, ties:0, pf:1555.78, finish:5 },
+      { manager:'M. Araos', wins:8, losses:6, ties:0, pf:1542.98, finish:6 },
+      { manager:'NegroCastro', wins:7, losses:7, ties:0, pf:1638.84, finish:7 },
+      { manager:'jtalvarino', wins:7, losses:7, ties:0, pf:1643.24, finish:8 },
+      { manager:'dvelarde', wins:7, losses:7, ties:0, pf:1592.16, finish:9 },   // W-L derived from season totals
+      { manager:'diego678', wins:6, losses:8, ties:0, pf:1641.74, finish:10 },
+      { manager:'FM17', wins:5, losses:9, ties:0, pf:1483.64, finish:11 },
+      { manager:'ncastro', wins:5, losses:9, ties:0, pf:1561.7, finish:12 },
+      { manager:'Jpsilva01', wins:4, losses:10, ties:0, pf:1528.8, finish:13 },
+      { manager:'JJuarez', wins:4, losses:10, ties:0, pf:1290.8, finish:14 }
+  ] },
+
+  { season: 2017, scoring: 'half PPR', playoffSpots: 4, teams: [
+      { manager:'diego678', wins:11, losses:3, ties:0, pf:1475.56, finish:1 },
+      { manager:'fbaldassare', wins:9, losses:5, ties:0, pf:1418.36, finish:2 },
+      { manager:'Jpsilva01', wins:9, losses:5, ties:0, pf:1347.48, finish:3 },
+      { manager:'fjgonzalezb', wins:8, losses:6, ties:0, pf:1359.82, finish:4 },
+      { manager:'N. Mora', wins:7, losses:7, ties:0, pf:1403.16, finish:5 },
+      { manager:'nlarrain', wins:8, losses:6, ties:0, pf:1402.9, finish:6 },
+      { manager:'FM17', wins:7, losses:7, ties:0, pf:1358.62, finish:7 },
+      { manager:'josekutz', wins:7, losses:7, ties:0, pf:1468.02, finish:8 },
+      { manager:'jtalvarino', wins:6, losses:8, ties:0, pf:1309.2, finish:9 },
+      { manager:'NegroCastro', wins:6, losses:8, ties:0, pf:1321.32, finish:10 },
+      { manager:'JJuarez', wins:6, losses:8, ties:0, pf:1332.26, finish:11 },
+      { manager:'Rura', wins:5, losses:9, ties:0, pf:1347.1, finish:12 },
+      { manager:'ncastro', wins:5, losses:9, ties:0, pf:1311.48, finish:13 },
+      { manager:'dvelarde', wins:4, losses:10, ties:0, pf:1184.56, finish:14 }
+  ] },
+
+  { season: 2018, scoring: 'half PPR', playoffSpots: 4, teams: [
+      { manager:'dvelarde', wins:9, losses:5, ties:0, pf:1533.84, finish:1 },
+      { manager:'NegroCastro', wins:9, losses:5, ties:0, pf:1621.34, finish:2 },
+      { manager:'N. Mora', wins:10, losses:4, ties:0, pf:1570.44, finish:3 },
+      { manager:'nlarrain', wins:11, losses:3, ties:0, pf:1704.58, finish:4 },
+      { manager:'josekutz', wins:8, losses:6, ties:0, pf:1654.76, finish:5 },
+      { manager:'Jpsilva01', wins:8, losses:6, ties:0, pf:1512.6, finish:6 },
+      { manager:'fjgonzalezb', wins:7, losses:7, ties:0, pf:1363.92, finish:7 },
+      { manager:'fbaldassare', wins:6, losses:8, ties:0, pf:1522.04, finish:8 },
+      { manager:'FM17', wins:6, losses:8, ties:0, pf:1452.04, finish:9 },
+      { manager:'ncastro', wins:5, losses:9, ties:0, pf:1436.6, finish:10 },
+      { manager:'diego678', wins:5, losses:9, ties:0, pf:1377.3, finish:11 },
+      { manager:'jtalvarino', wins:5, losses:9, ties:0, pf:1343.28, finish:12 },
+      { manager:'Rura', wins:5, losses:9, ties:0, pf:1394.34, finish:13 },
+      { manager:'JJuarez', wins:4, losses:10, ties:0, pf:1400.64, finish:14 }
+  ] },
+
+  { season: 2019, scoring: 'half PPR', playoffSpots: 4, teams: [
+      { manager:'Jpsilva01', wins:7, losses:7, ties:0, pf:1397.96, finish:1 },
+      { manager:'ncastro', wins:8, losses:6, ties:0, pf:1328.96, finish:2 },
+      { manager:'NegroCastro', wins:10, losses:4, ties:0, pf:1534.06, finish:3 },
+      { manager:'fjgonzalezb', wins:11, losses:3, ties:0, pf:1610.06, finish:4 },
+      { manager:'dvelarde', wins:7, losses:7, ties:0, pf:1434.64, finish:5 },
+      { manager:'jtalvarino', wins:7, losses:7, ties:0, pf:1492.44, finish:6 },
+      { manager:'josekutz', wins:7, losses:7, ties:0, pf:1417, finish:7 },
+      { manager:'nlarrain', wins:7, losses:7, ties:0, pf:1461.42, finish:8 },
+      { manager:'diego678', wins:6, losses:8, ties:0, pf:1360.36, finish:9 },
+      { manager:'N. Mora', wins:6, losses:8, ties:0, pf:1507.72, finish:10 },   // W-L derived from season totals
+      { manager:'Rura', wins:6, losses:8, ties:0, pf:1258.78, finish:11 },
+      { manager:'JJuarez', wins:6, losses:8, ties:0, pf:1406.46, finish:12 },
+      { manager:'fbaldassare', wins:5, losses:9, ties:0, pf:1347.36, finish:13 },
+      { manager:'FM17', wins:5, losses:9, ties:0, pf:1393.82, finish:14 }
+  ] },
 ];
 
 /* ---------------------------------------------------------------------------
@@ -680,7 +756,7 @@ function buildManual(){
     const teams = (h.teams||[]).map((t,i) => ({
       rosterId:'m'+i, manager:canon({name:t.manager}), teamName:t.manager,
       wins:t.wins||0, losses:t.losses||0, ties:t.ties||0,
-      pf:t.pf||0, pa:t.pa||0, finish:t.finish
+      pf:t.pf||0, pa:(t.pa===undefined||t.pa===null)?null:t.pa, finish:t.finish
     }));
     const champ = teams.find(t => t.finish===1);
     const ru    = teams.find(t => t.finish===2);
@@ -690,8 +766,12 @@ function buildManual(){
       teams, byRoster:{}, weeks:[], regEnd:null,
       champion: champ?champ.manager:null, runnerUp: ru?ru.manager:null,
       consolationWinner:null, consolationRunnerUp:null, bottomPair:null, schedule:[],
-      third: trd?trd.manager:null, playoffTeams:[],
-      draft:[], teamCount:teams.length, notes:h.notes||'', scoring:'—'
+      third: trd?trd.manager:null,
+      playoffTeams: h.playoffSpots
+        ? teams.filter(t => t.finish && t.finish <= h.playoffSpots).map(t => t.manager)
+        : [],
+      playoffTeamCount: h.playoffSpots||null,
+      draft:[], teamCount:teams.length, notes:h.notes||'', scoring:h.scoring||'—'
     };
   });
 }
@@ -702,14 +782,39 @@ function buildManagers(seasons){
   const get = n => m[n] = m[n] || {
     name:n, seasons:0, wins:0, losses:0, ties:0, pf:0, pa:0,
     titles:0, finals:0, seconds:0, thirds:0, playoffs:0, consolations:0,
-    years:[], allPlayW:0, allPlayL:0, best:null
+    years:[], allPlayW:0, allPlayL:0, best:null, idxNum:0, idxDen:0,
+    apRefW:0, apRefL:0, apRefT:0
   };
+
+  // Scoring rules have changed over the years (half PPR, full PPR, and whatever
+  // the NFL.com seasons used). Raw PPG is therefore not comparable across
+  // seasons, so also track each team's scoring relative to its own season's
+  // league average: 100 = exactly average that year, 110 = 10% above.
+  seasons.forEach(s => {
+    const gp = t => t.wins + t.losses + t.ties;
+    const totG = s.teams.reduce((a,t)=>a+gp(t), 0);
+    const totP = s.teams.reduce((a,t)=>a+t.pf, 0);
+    const lgPPG = totG ? totP/totG : 0;
+    s.teams.forEach(t => {
+      const g = gp(t);
+      if(g && lgPPG){
+        const r0 = get(t.manager);
+        r0.idxNum += ((t.pf/g)/lgPPG) * g;
+        r0.idxDen += g;
+      }
+    });
+  });
 
   seasons.forEach(s => {
     s.teams.forEach(t => {
       const r = get(t.manager);
-      r.seasons++; r.wins+=t.wins; r.losses+=t.losses; r.ties+=t.ties;
-      r.pf+=t.pf; r.pa+=t.pa; r.years.push(s.season);
+      // A season with rosters but no games played (a season not yet under way)
+      // must not count as a season played.
+      if(t.wins+t.losses+t.ties > 0){ r.seasons++; r.years.push(s.season); }
+      r.wins+=t.wins; r.losses+=t.losses; r.ties+=t.ties;
+      r.pf+=t.pf; if(t.pa) r.pa+=t.pa;
+      // luck compares like with like: only seasons that have weekly results
+      if(s.weeks.length){ r.apRefW+=t.wins; r.apRefL+=t.losses; r.apRefT+=t.ties; }
     });
     if(s.champion) { get(s.champion).titles++; get(s.champion).finals++; }
     if(s.runnerUp) { get(s.runnerUp).finals++;  get(s.runnerUp).seconds++; }
@@ -736,9 +841,12 @@ function buildManagers(seasons){
     const g = r.wins+r.losses+r.ties;
     r.winPct = g ? (r.wins + r.ties*0.5)/g : 0;
     r.ppg = g ? r.pf/g : 0;
+    r.scoreIndex = r.idxDen ? (r.idxNum/r.idxDen)*100 : null;
     const ap = r.allPlayW+r.allPlayL;
     r.allPlayPct = ap ? r.allPlayW/ap : null;
-    r.luck = (r.allPlayPct!==null) ? r.winPct - r.allPlayPct : null;
+    const rg = r.apRefW+r.apRefL+r.apRefT;
+    const refPct = rg ? (r.apRefW + r.apRefT*0.5)/rg : null;
+    r.luck = (r.allPlayPct!==null && refPct!==null) ? refPct - r.allPlayPct : null;
   });
   return m;
 }
@@ -1025,7 +1133,7 @@ function renderOverview(){
   g.appendChild(stat('Different champions', titled.length, titled[0]?`${titled[0].name} leads with ${titled[0].titles}`:'', ''));
 
   const r=STATE.records;
-  if(r.high) g.appendChild(stat('Highest score', fmt(r.high.points), r.high.who, `${r.high.season} week ${r.high.week}`));
+  if(r.high) g.appendChild(stat('Highest score', fmt(r.high.points), r.high.who, `${r.high.season} week ${r.high.week} \u00b7 2020 onward`));
   p.appendChild(g);
 
   p.appendChild(el('h2',null,'Champions'));
@@ -1048,8 +1156,8 @@ function renderOverview(){
 
   p.appendChild(el('h2',null,'Eras'));
   const e=el('div','card small muted');
-  e.innerHTML = `<p style="margin-top:0"><b style="color:var(--paper)">2015–2019 &middot; NFL.com</b> — league founded with 10 managers, 12 in year two, 14 from 2017 onward. The 2020 NFL.com season was never activated; the league moved to Sleeper instead. These seasons are being recovered by hand.</p>
-    <p style="margin-bottom:0"><b style="color:var(--paper)">2020–present &middot; Sleeper</b> — loaded live from the API. Scoring and roster rules changed between platforms, so cross-era point totals are not directly comparable. Win-loss records are.</p>`;
+  e.innerHTML = `<p style="margin-top:0"><b style="color:var(--paper)">2015\u20132019 &middot; NFL.com</b> \u2014 10 managers in 2015, 14 from 2016 onward, four playoff spots. Scoring was standard in 2015, full PPR in 2016, half PPR from 2017. The 2020 NFL.com season was never activated; the league moved to Sleeper instead. These seasons come from the league's own historical spreadsheet, which recorded final standings, records and regular-season points \u2014 but not weekly scores and not points against. So they appear in standings, championships, punishments and all-time records, and are deliberately absent from anything built on individual matchups: weekly records, head-to-head, the bowls, all-play and luck.</p>
+    <p style="margin-bottom:0"><b style="color:var(--paper)">2020\u2013present &middot; Sleeper</b> \u2014 loaded live from the API, half PPR throughout, four playoff spots through 2023 and six from 2024. Because the scoring format changed over the league's history, raw points are not comparable across seasons. Score+ on the All-Time tab restates each team's scoring against its own season's league average, and is the fair way to compare across eras.</p>`;
   p.appendChild(e);
 }
 
@@ -1068,7 +1176,10 @@ function renderSeasons(){
     const s=STATE.seasons.find(x=>x.season===+sel.value); box.innerHTML='';
     const h=el('h2',null,`${s.season} standings <span class="tag ${s.source}">${s.source==='sleeper'?'sleeper api':'manual entry'}</span>`);
     box.appendChild(h);
-    if(s.notes) box.appendChild(el('div','small muted',esc(s.notes)));
+    const meta = [s.scoring && s.scoring!=='—' ? s.scoring : '',
+                  s.playoffTeamCount ? `${s.playoffTeamCount} playoff spots` : '',
+                  s.notes||''].filter(Boolean).join(' · ');
+    if(meta) box.appendChild(el('div','small muted',esc(meta)));
 
     const teams=s.teams.slice().sort((a,b)=>{
       const wa=a.wins+a.ties*.5, wb=b.wins+b.ties*.5;
@@ -1081,7 +1192,8 @@ function renderSeasons(){
       '<th>Team</th><th>W</th><th>L</th><th>T</th><th>PF</th><th>PA</th><th>Diff</th></tr></thead>';
     const tb=el('tbody');
     teams.forEach((tm,i)=>{
-      const d=tm.pf-tm.pa;
+      const hasPA = tm.pa !== null && tm.pa !== undefined;
+      const d = hasPA ? tm.pf-tm.pa : null;
       const crown = (s.champion===tm.manager) ? ' <span class="champ">&#9733;</span>' : '';
       const inherited = tm.viaCoOwner ? '<span class="tag" title="Primary owner left the league; this is the active co-owner">via co-owner</span>' : '';
       const coCell = anyCo
@@ -1091,8 +1203,9 @@ function renderSeasons(){
         ${coCell}
         <td style="text-align:right" class="muted small">${esc(tm.teamName)}</td>
         <td class="num">${tm.wins}</td><td class="num">${tm.losses}</td><td class="num">${tm.ties}</td>
-        <td class="num">${fmt(tm.pf)}</td><td class="num">${fmt(tm.pa)}</td>
-        <td class="num ${d>=0?'pos':'neg'}">${d>=0?'+':''}${fmt(d)}</td></tr>`;
+        <td class="num">${fmt(tm.pf)}</td>
+        <td class="num">${hasPA?fmt(tm.pa):'<span class="muted">—</span>'}</td>
+        <td class="num ${!hasPA?'':(d>=0?'pos':'neg')}">${!hasPA?'<span class="muted">—</span>':(d>=0?'+':'')+fmt(d)}</td></tr>`;
     });
     t.appendChild(tb); box.appendChild(t);
   };
@@ -1150,7 +1263,7 @@ const ALLTIME_SORT = { key:'winPct', dir:-1 };
 function renderAllTime(){
   const p=$('#p-alltime'); p.innerHTML='';
   p.appendChild(el('h2',null,'All-time manager records'));
-  p.appendChild(el('div','small muted','Click any column to sort. All-play is your record if you had played every other team every week — it strips out schedule luck. Luck is the gap between the two: positive means the schedule was kind.'));
+  p.appendChild(el('div','small muted','Click any column to sort. All-play is your record if you had played every other team every week — it strips out schedule luck; Luck is the gap between the two. Score+ is scoring relative to that season\'s league average, so 100 is exactly average and it stays comparable even though the scoring rules changed over the years — unlike raw PPG.'));
 
   const cols = [
     {key:'name',       label:'Manager', text:true, cell:m=>`<span class="name">${esc(m.name)}</span>`},
@@ -1160,6 +1273,7 @@ function renderAllTime(){
     {key:'winPct',     label:'Win%',      cell:m=>(m.winPct*100).toFixed(1)},
     {key:'pf',         label:'PF',        cell:m=>fmt(m.pf,0)},
     {key:'ppg',        label:'PPG',       cell:m=>fmt(m.ppg)},
+    {key:'scoreIndex', label:'Score+',    cell:m=>m.scoreIndex===null?'—':`<span class="${m.scoreIndex>=100?'pos':'neg'}">${m.scoreIndex.toFixed(0)}</span>`},
     {key:'allPlayPct', label:'All-play%', cell:m=>m.allPlayPct===null?'—':(m.allPlayPct*100).toFixed(1)},
     {key:'luck',       label:'Luck',      cell:m=>m.luck===null?'—':`<span class="${m.luck>=0?'pos':'neg'}">${(m.luck>=0?'+':'')+(m.luck*100).toFixed(1)}</span>`},
     {key:'playoffs',   label:'Playoffs',  cell:m=>m.playoffs||''},
@@ -1262,6 +1376,7 @@ function renderH2H(){
   const names=Object.keys(STATE.managers).sort();
   if(!names.length || !Object.keys(h).length){ p.appendChild(el('div','empty','Head-to-head needs week-level results, which exist for Sleeper seasons only.')); return; }
   p.appendChild(el('h2',null,'Everyone else'));
+  p.appendChild(el('div','small muted','Head-to-head needs individual matchups, so this covers Sleeper seasons only (2020 onward). Meetings during the NFL.com years are not counted.'));
   p.appendChild(el('div','small muted','Read across: the row manager\u2019s record against each column manager.'));
   const wrap=el('div','matrix-scroll');
   const t=el('table','matrix');
@@ -1388,7 +1503,7 @@ function renderRecords(){
   const group=(title, r, note)=>{
     if(!r || !r.high) return;
     p.appendChild(el('h3',null,title));
-    if(note) p.appendChild(el('div','small muted',note));
+    p.appendChild(el('div','small muted',(note?note+' ':'')+'Sleeper seasons only (2020 onward) \u2014 the NFL.com years were recorded as final standings, without weekly scores.'));
     const g=el('div','grid');
     const card=(k,v,who,w2)=>{
       const c=el('div','card stat');
@@ -1410,7 +1525,7 @@ function renderRecords(){
 
   const rows=Object.values(STATE.managers).filter(m=>m.best).sort((a,b)=>b.best.points-a.best.points);
   if(rows.length) p.appendChild(el('h2',null,'Best single week, by manager'));
-  if(rows.length) p.appendChild(el('div','small muted','Regular season only.'));
+  if(rows.length) p.appendChild(el('div','small muted','Regular season, Sleeper seasons only (2020 onward).'));
   const t=el('table');
   t.innerHTML='<thead><tr><th></th><th>Manager</th><th>Points</th><th>When</th></tr></thead>';
   const tb=el('tbody');
@@ -1422,33 +1537,44 @@ function renderRecords(){
 
   // ---- scoring extremes ----
   const scorers = Object.values(STATE.managers)
-    .filter(m => (m.wins+m.losses+m.ties) > 0 && m.ppg > 0)
-    .sort((a,b)=>b.ppg-a.ppg);
+    .filter(m => (m.wins+m.losses+m.ties) > 0 && m.ppg > 0 && m.scoreIndex !== null)
+    .sort((a,b)=>b.scoreIndex-a.scoreIndex);
   if(scorers.length >= 2){
     p.appendChild(el('h2',null,'Scoring, best and worst'));
-    p.appendChild(el('div','small muted','Career points per game. Scoring rules changed between NFL.com and Sleeper, so managers with seasons in both eras are averaging across two different systems.'));
+    p.appendChild(el('div','small muted','Ranked by Score+ — scoring relative to each season\'s league average, where 100 is average. Raw PPG is shown too, but it is not comparable across seasons: the league has used half PPR, full PPR and whatever the NFL.com years ran, and a full-PPR season inflates every score in it.'));
     const wrap=el('div','grid');
     const mkList=(title, list, cls)=>{
       const c=el('div','card');
       c.appendChild(el('h3',null,title));
       const tt=el('table');
-      tt.innerHTML='<thead><tr><th></th><th>Manager</th><th>PPG</th><th>Yrs</th></tr></thead>';
+      tt.innerHTML='<thead><tr><th></th><th>Manager</th><th>Score+</th><th>PPG</th><th>Yrs</th></tr></thead>';
       const tbb=el('tbody');
       list.forEach((m,i)=>{
         tbb.innerHTML+=`<tr><td class="rank">${i+1}</td><td class="name">${esc(m.name)}</td>
-          <td class="num ${cls}">${fmt(m.ppg)}</td><td class="num muted">${m.seasons}</td></tr>`;
+          <td class="num ${cls}">${m.scoreIndex.toFixed(0)}</td>
+          <td class="num muted">${fmt(m.ppg)}</td><td class="num muted">${m.seasons}</td></tr>`;
       });
       tt.appendChild(tbb); c.appendChild(tt);
       wrap.appendChild(c);
     };
-    mkList('Top 3 — points per game', scorers.slice(0,3), 'cons');
-    mkList('Bottom 3 — points per game', scorers.slice(-3).reverse(), 'shame-last');
+    mkList('Top 3 — scoring', scorers.slice(0,3), 'cons');
+    mkList('Bottom 3 — scoring', scorers.slice(-3).reverse(), 'shame-last');
     p.appendChild(wrap);
   }
 
   // ---- postseason ----
   p.appendChild(el('h2',null,'Postseason'));
-  p.appendChild(el('div','small muted','Playoff appearances and podium finishes. Playoff counts come from the championship bracket, so they only cover seasons where one was played.'));
+  const fields = [...new Set(STATE.seasons.filter(s=>s.playoffTeamCount).map(s=>s.playoffTeamCount))];
+  let fieldNote = '';
+  if(fields.length > 1){
+    const byField = {};
+    STATE.seasons.filter(s=>s.playoffTeamCount).forEach(s => (byField[s.playoffTeamCount]=byField[s.playoffTeamCount]||[]).push(s.season));
+    fieldNote = ' The playoff field has not been constant — '
+      + Object.entries(byField).sort((a,b)=>a[0]-b[0])
+          .map(([n,yrs])=>`${n} spots in ${yrs.join(', ')}`).join('; ')
+      + '. Making the playoffs in a 4-team field was a harder thing to do than in a 6-team one, so raw appearance counts favour recent seasons.';
+  }
+  p.appendChild(el('div','small muted','Playoff appearances and podium finishes. Playoff counts come from the championship bracket, so they only cover seasons where one was played.' + fieldNote));
   const post = Object.values(STATE.managers)
     .filter(m => m.playoffs || m.titles || m.seconds || m.thirds)
     .sort((a,b)=> b.titles-a.titles || b.seconds-a.seconds || b.thirds-a.thirds || b.playoffs-a.playoffs);
@@ -1527,17 +1653,20 @@ function renderData(){
   const p=$('#p-data'); p.innerHTML='';
   p.appendChild(el('h2',null,'What is loaded'));
   const t=el('table');
-  t.innerHTML='<thead><tr><th>Season</th><th>Source</th><th>Teams</th><th>Weeks</th><th>Draft picks</th><th>Champion</th></tr></thead>';
+  t.innerHTML='<thead><tr><th>Season</th><th>Source</th><th>Teams</th><th>Playoff spots</th><th>Scoring</th><th>Weeks</th><th>Draft picks</th><th>Champion</th></tr></thead>';
   const tb=el('tbody');
   STATE.seasons.slice().sort((a,b)=>b.season-a.season).forEach(s=>{
     tb.innerHTML+=`<tr><td class="name num">${s.season}</td><td style="text-align:right">${s.source}</td>
-      <td class="num">${s.teamCount}</td><td class="num">${s.weeks.length}</td>
+      <td class="num">${s.teamCount}</td>
+      <td class="num">${s.playoffTeamCount||'—'}</td>
+      <td class="num muted small">${esc(s.scoring||'—')}</td>
+      <td class="num">${s.weeks.length}</td>
       <td class="num">${s.draft.length}</td><td>${esc(s.champion||'—')}</td></tr>`;
   });
   const now=new Date().getFullYear();
   for(let y=CONFIG.firstSeason;y<=now;y++){
     if(!STATE.seasons.find(s=>s.season===y))
-      tb.innerHTML+=`<tr><td class="name num" style="color:var(--ghost)">${y}</td><td colspan="5" class="muted" style="text-align:right">not recovered</td></tr>`;
+      tb.innerHTML+=`<tr><td class="name num" style="color:var(--ghost)">${y}</td><td colspan="7" class="muted" style="text-align:right">not recovered</td></tr>`;
   }
   t.appendChild(tb); p.appendChild(t);
 
