@@ -77,10 +77,22 @@ h1 .thin{color:var(--ghost)}
 .yr .lbl{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim)}
 .yr.has .lbl{color:var(--paper)}
 .strip-key{
-  display:flex;gap:20px;font-size:12px;color:var(--dim);
+  display:flex;gap:12px;align-items:center;font-size:12px;color:var(--dim);
   font-family:'IBM Plex Mono',monospace;margin-bottom:30px;flex-wrap:wrap;
 }
 .strip-key b{color:var(--amber);font-weight:600}
+.fb-info{margin-right:auto}
+.fb-btn{
+  font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.06em;
+  background:transparent;color:var(--dim);border:1px solid var(--line);
+  border-radius:2px;padding:4px 10px;cursor:pointer;
+}
+.fb-btn:hover{color:var(--paper);border-color:var(--ghost)}
+.fb-btn.on{color:var(--amber);border-color:var(--amber)}
+.yr[role="button"]{cursor:pointer}
+.yr.off .bar{opacity:.22}
+.yr.off .lbl{color:var(--ghost)}
+.yr:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 
 /* ---------- header from config ---------- */
 $('#eyebrow').textContent = CONFIG.eyebrow;
@@ -234,10 +246,7 @@ a{color:var(--amber)}
 </header>
 
 <div class="strip" id="strip"></div>
-<div class="strip-key">
-  <span><b>Solid</b> = data loaded</span>
-  <span><b>Hatched</b> = season not recovered yet</span>
-</div>
+<div class="strip-key" id="filterbar"></div>
 
 <div id="status">Loading league chain from Sleeper…</div>
 
@@ -983,14 +992,15 @@ function buildShame(seasons){
    come out near-uniform. That is the honest answer, not a broken model - a
    drafted roster carries no information this page can measure.
 --------------------------------------------------------------------------- */
-function buildForecast(){
-  const cur = STATE.seasons.filter(s=>s.source==='sleeper').pop();
+function buildForecast(allSeasons){
+  const seasons = allSeasons || STATE.allSeasons || STATE.seasons;
+  const cur = seasons.filter(s=>s.source==='sleeper').pop();
   if(!cur || !cur.schedule || !cur.schedule.length) return null;
 
   const SIMS = 10000, K = 5;
 
   const pool = [];
-  STATE.seasons.filter(s=>s.source==='sleeper').forEach(s =>
+  seasons.filter(s=>s.source==='sleeper').forEach(s =>
     s.weeks.filter(w=>!w.isPlayoff).forEach(w => w.allScores.forEach(x => pool.push(x.points))));
   const lgMean = pool.length ? pool.reduce((a,b)=>a+b,0)/pool.length : 110;
   const lgSD = pool.length>1
@@ -1102,14 +1112,50 @@ function setStatus(t, isErr){
 function renderStrip(){
   const strip=$('#strip'); strip.innerHTML='';
   const now = new Date().getFullYear();
-  const last = Math.max(now, ...STATE.seasons.map(s=>s.season));
+  const last = Math.max(now, ...STATE.allSeasons.map(s=>s.season));
   for(let y=CONFIG.firstSeason; y<=last; y++){
-    const s = STATE.seasons.find(x=>x.season===y);
-    const d = el('div','yr '+(s?'has':'miss'));
-    const src = s ? (s.source==='sleeper'?'SLP':'MAN') : '';
-    d.innerHTML = `<div class="bar" title="${s?esc(s.name):'not recovered'}">${src}</div><div class="lbl">'${String(y).slice(2)}</div>`;
+    const s = STATE.allSeasons.find(x=>x.season===y);
+    const on = STATE.selected.has(y);
+    const d = el('div','yr '+(s?'has':'miss')+(s&&!on?' off':''));
+    const src = s ? (s.source==='sleeper' ? 'SLP' : 'NFL') : '';
+    d.innerHTML = `<div class="bar" title="${s?esc(s.name||''):'no data'}">${src}</div>`
+                + `<div class="lbl">'${String(y).slice(2)}</div>`;
+    if(s){
+      d.setAttribute('role','button');
+      d.setAttribute('aria-pressed', on?'true':'false');
+      d.setAttribute('aria-label', `${y} season, ${on?'shown':'hidden'}`);
+      d.tabIndex = 0;
+      const go = () => toggleSeason(y);
+      d.addEventListener('click', go);
+      d.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); }});
+    }
     strip.appendChild(d);
   }
+  renderFilterBar();
+}
+
+function renderFilterBar(){
+  const bar=$('#filterbar'); bar.innerHTML='';
+  const all=STATE.allSeasons.map(s=>s.season);
+  const n=STATE.selected.size;
+  const info=el('span','fb-info', n===all.length
+    ? `All ${all.length} seasons · click a season above to focus`
+    : `<b>Showing ${n} of ${all.length} seasons</b> · every tab below reflects this`);
+  bar.appendChild(info);
+  const btn=(label,fn,active)=>{
+    const b=el('button','fb-btn'+(active?' on':''),esc(label));
+    b.addEventListener('click',fn); bar.appendChild(b);
+  };
+  const setSel = ys => { STATE.selected = new Set(ys); recompute(); };
+  btn('All', ()=>setSel(all), n===all.length);
+  btn('Sleeper era', ()=>setSel(STATE.allSeasons.filter(s=>s.source==='sleeper').map(s=>s.season)));
+  btn('NFL.com era', ()=>setSel(STATE.allSeasons.filter(s=>s.source!=='sleeper').map(s=>s.season)));
+}
+
+function toggleSeason(y){
+  if(STATE.selected.has(y)) STATE.selected.delete(y); else STATE.selected.add(y);
+  if(!STATE.selected.size) STATE.selected = new Set(STATE.allSeasons.map(s=>s.season));
+  recompute();
 }
 
 function renderOverview(){
@@ -1125,8 +1171,9 @@ function renderOverview(){
       (who?`<div class="who">${esc(who)}</div>`:'')+(when?`<div class="when">${esc(when)}</div>`:'');
     return c;
   };
-  g.appendChild(stat('Seasons recovered', `${recovered} / ${total}`, null,
-    recovered<total ? `${total-recovered} still missing from the NFL.com era` : 'complete'));
+  const done = seasons.filter(s=>s.champion).sort((a,b)=>b.season-a.season)[0];
+  if(done) g.appendChild(stat('Reigning champion', esc(done.champion), '',
+    `${done.season}${done.runnerUp?` · beat ${done.runnerUp}`:''}`));
   g.appendChild(stat('Managers tracked', Object.keys(mans).length, null, 'across all recovered seasons'));
 
   const titled = Object.values(mans).filter(m=>m.titles>0).sort((a,b)=>b.titles-a.titles);
@@ -1457,6 +1504,7 @@ function renderForecast(){
   if(!f){ p.appendChild(el('div','empty','No current-season schedule available yet. Odds appear once Sleeper publishes the matchups.')); return; }
 
   p.appendChild(el('h2',null,`${f.season} playoff odds`));
+  p.appendChild(el('div','small muted','This tab always uses every season, whatever is selected in the strip above.'));
 
   const state = f.weeksPlayed === 0
     ? `No games played yet. Every team starts at the league average of ${fmt(f.lgMean)} points per week, so these odds are driven only by the schedule — they are close to even by design. They start moving after week 1.`
@@ -1655,8 +1703,8 @@ function renderData(){
   const t=el('table');
   t.innerHTML='<thead><tr><th>Season</th><th>Source</th><th>Teams</th><th>Playoff spots</th><th>Scoring</th><th>Weeks</th><th>Draft picks</th><th>Champion</th></tr></thead>';
   const tb=el('tbody');
-  STATE.seasons.slice().sort((a,b)=>b.season-a.season).forEach(s=>{
-    tb.innerHTML+=`<tr><td class="name num">${s.season}</td><td style="text-align:right">${s.source}</td>
+  STATE.allSeasons.slice().sort((a,b)=>b.season-a.season).forEach(s=>{
+    tb.innerHTML+=`<tr><td class="name num">${s.season}</td><td style="text-align:right">${s.source==='sleeper'?'sleeper':'NFL.com'}</td>
       <td class="num">${s.teamCount}</td>
       <td class="num">${s.playoffTeamCount||'—'}</td>
       <td class="num muted small">${esc(s.scoring||'—')}</td>
@@ -1665,7 +1713,7 @@ function renderData(){
   });
   const now=new Date().getFullYear();
   for(let y=CONFIG.firstSeason;y<=now;y++){
-    if(!STATE.seasons.find(s=>s.season===y))
+    if(!STATE.allSeasons.find(s=>s.season===y))
       tb.innerHTML+=`<tr><td class="name num" style="color:var(--ghost)">${y}</td><td colspan="7" class="muted" style="text-align:right">not recovered</td></tr>`;
   }
   t.appendChild(tb); p.appendChild(t);
@@ -1710,26 +1758,36 @@ document.querySelectorAll('nav.tabs button').forEach(b=>{
   });
 });
 
+/* ---------- recompute everything for the selected seasons ---------- */
+function recompute(){
+  STATE.seasons  = STATE.allSeasons.filter(s => STATE.selected.has(s.season));
+  STATE.managers = buildManagers(STATE.seasons);
+  STATE.h2h      = buildH2H(STATE.seasons);
+  STATE.rivalries= buildRivalries(STATE.seasons);
+  STATE.records  = buildRecords(STATE.seasons,'all');
+  STATE.recReg   = buildRecords(STATE.seasons,'reg');
+  STATE.recPost  = buildRecords(STATE.seasons,'post');
+  STATE.shame    = buildShame(STATE.seasons);
+
+  renderStrip(); renderOverview(); renderSeasons(); renderMatchups();
+  renderAllTime(); renderH2H(); renderRecords(); renderForecast();
+  renderShame(); renderDrafts(); renderData();
+}
+
 /* ---------- boot ---------- */
 (async function(){
   try{
     const sleeper = await loadSleeper();
     const manual  = buildManual();
     const seen = new Set(sleeper.map(s=>s.season));
-    STATE.seasons = sleeper.concat(manual.filter(m=>!seen.has(m.season))).sort((a,b)=>a.season-b.season);
+    STATE.allSeasons = sleeper.concat(manual.filter(m=>!seen.has(m.season))).sort((a,b)=>a.season-b.season);
+    STATE.selected   = new Set(STATE.allSeasons.map(s=>s.season));
 
-    STATE.managers = buildManagers(STATE.seasons);
-    STATE.h2h      = buildH2H(STATE.seasons);
-    STATE.rivalries= buildRivalries(STATE.seasons);
-    STATE.records  = buildRecords(STATE.seasons,'all');
-    STATE.recReg   = buildRecords(STATE.seasons,'reg');
-    STATE.recPost  = buildRecords(STATE.seasons,'post');
-    STATE.forecast = buildForecast();
-    STATE.shame    = buildShame(STATE.seasons);
+    // The forecast is about the live season and deliberately ignores the filter.
+    STATE.forecast = buildForecast(STATE.allSeasons);
     STATE.loaded   = true;
 
-    renderStrip(); renderOverview(); renderSeasons(); renderMatchups();
-    renderAllTime(); renderH2H(); renderRecords(); renderForecast(); renderShame(); renderDrafts(); renderData();
+    recompute();
 
     const sl=STATE.seasons.filter(s=>s.source==='sleeper').length;
     const mn=STATE.seasons.length-sl;
