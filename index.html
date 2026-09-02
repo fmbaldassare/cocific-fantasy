@@ -3,7 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cocific Fantasy — League Record Book</title>
+<title>Cocific Fantasy — Registro Histórico</title>
+<meta name="description" content="Doce temporadas, dieciocho managers, un solo registro. Campeones, récords, castigos y bowls de la liga Cocific Fantasy desde 2015.">
+<meta name="theme-color" content="#0E1330">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Cocific Fantasy — Registro Histórico">
+<meta property="og:description" content="Doce temporadas. Dieciocho managers. Un solo registro. Campeones, récords, castigos y bowls desde 2015.">
+<meta property="og:image" content="logo.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="logo.png">
+<link rel="apple-touch-icon" href="logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -188,7 +197,18 @@ tbody tr:hover{background:rgba(30,39,85,.5)}
 .bowl-empty{color:var(--dim);font-style:italic;font-size:13px}
 
 /* h2h matrix */
-.matrix-scroll{overflow-x:auto}
+.matrix-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* Wide tables get their own scroll container so the page itself never
+   overflows on a phone. */
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -20px;padding:0 20px}
+.tscroll > table{min-width:640px}
+.tscroll::-webkit-scrollbar{height:6px}
+.tscroll::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.swipe-hint{
+  display:none;font-family:'IBM Plex Mono',monospace;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ghost);margin-bottom:6px;
+}
+@media(max-width:760px){ .swipe-hint{display:block} }
 table.matrix td,table.matrix th{padding:6px;font-size:12px;text-align:center}
 table.matrix th.rowh,table.matrix td.rowh{text-align:left;position:sticky;left:0;background:var(--ink);z-index:1;white-space:nowrap}
 table.matrix td.self{background:var(--ink3);color:var(--ghost)}
@@ -535,6 +555,10 @@ const $  = s => document.querySelector(s);
 const el = (t,c,h) => { const n=document.createElement(t); if(c)n.className=c; if(h!==undefined)n.innerHTML=h; return n; };
 const num0 = n => (n===null||n===undefined||isNaN(n)) ? '\u2014' : Math.round(n).toLocaleString('en-US');
 const fmt = (n,d=1) => (n===null||n===undefined||isNaN(n)) ? '—' : Number(n).toFixed(d);
+const wrapT = (p, t, hint) => {
+  if(hint!==false){ const h=el('div','swipe-hint','\u2194 swipe to see all columns'); p.appendChild(h); }
+  const d=el('div','tscroll'); d.appendChild(t); p.appendChild(d); return d;
+};
 const esc = s => String(s??'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 const STATE = { seasons: [], managers: {}, loaded:false };
@@ -575,7 +599,7 @@ async function loadSleeper(){
   const out = [];
   for(const lg of chain){
     try { out.push(await loadSeason(lg)); }
-    catch(e){ console.warn('season failed', lg.season, e); }
+    catch(e){ console.warn('Season '+lg.season+' failed to load:', e); }
   }
   return out;
 }
@@ -1316,7 +1340,7 @@ function renderSeasons(){
         <td class="num">${hasPA?fmt(tm.pa):'<span class="muted">—</span>'}</td>
         <td class="num ${!hasPA?'':(d>=0?'pos':'neg')}">${!hasPA?'<span class="muted">—</span>':(d>=0?'+':'')+fmt(d)}</td></tr>`;
     });
-    t.appendChild(tb); box.appendChild(t);
+    t.appendChild(tb); wrapT(box,t);
   };
   sel.addEventListener('change',draw); draw();
 }
@@ -1429,7 +1453,7 @@ function renderAllTime(){
       cols.map((c,ci)=>`<td class="${ci===0?'name':'num'}">${c.cell(m)}</td>`).join('');
     tb.appendChild(tr);
   });
-  t.appendChild(tb); p.appendChild(t);
+  t.appendChild(tb); wrapT(p,t);
 }
 
 function renderBowls(p){
@@ -1487,6 +1511,7 @@ function renderH2H(){
   p.appendChild(el('h2',null,'Everyone else'));
   p.appendChild(el('div','small muted','Head-to-head needs individual matchups, so this covers Sleeper seasons only (2020 onward). Meetings during the NFL.com years are not counted.'));
   p.appendChild(el('div','small muted','Read across: the row manager\u2019s record against each column manager.'));
+  p.appendChild(el('div','swipe-hint','\u2194 swipe to see all managers'));
   const wrap=el('div','matrix-scroll');
   const t=el('table','matrix');
   let head='<thead><tr><th class="rowh">vs</th>';
@@ -1690,7 +1715,7 @@ function renderShame(){
       <td style="text-align:right" class="small">${cell}</td>
     </tr>`;
   });
-  t.appendChild(tb); p.appendChild(t);
+  t.appendChild(tb); wrapT(p,t);
 
   p.appendChild(el('h2',null,'Career tally'));
   p.appendChild(el('div','small muted','How often each manager landed in the bottom two. An asterisk marks a second-to-last finish rather than dead last.'));
@@ -1755,7 +1780,7 @@ function renderForecast(){
         <td class="num">${fmt(r.pf)}</td><td class="num">${fmt(r.pa)}</td>
         <td class="num">${fmt(r.pf/r.n)}</td></tr>`;
     });
-    t.appendChild(tb); p.appendChild(t);
+    t.appendChild(tb); wrapT(p,t);
 
     /* ---- last week ---- */
     const lw = cur.weeks.filter(w=>!w.isPlayoff).pop();
@@ -1808,7 +1833,7 @@ function renderForecast(){
         <span class="${cls}">${pct.toFixed(1)}%</span>
       </td></tr>`;
   });
-  t2.appendChild(tb2); p.appendChild(t2);
+  t2.appendChild(tb2); wrapT(p,t2);
 
   p.appendChild(el('h3',null,'How the odds work'));
   const m=el('div','card small muted');
@@ -1918,7 +1943,7 @@ function renderRecords(){
         <td class="num">${m.thirds||''}</td>
         <td class="num">${podium||''}</td></tr>`;
     });
-    tp.appendChild(tbp); p.appendChild(tp);
+    tp.appendChild(tbp); wrapT(p,tp);
 
     const never = Object.values(STATE.managers).filter(m => !m.playoffs && m.seasons);
     if(never.length){
@@ -1993,7 +2018,7 @@ function renderDrafts(){
         <td class="name">${esc(pk.manager)}</td><td style="text-align:right">${esc(pk.player)}</td>
         <td class="num muted">${esc(pk.position)}</td><td class="num muted">${esc(pk.team)}</td></tr>`;
     });
-    t.appendChild(tb); box.appendChild(t);
+    t.appendChild(tb); wrapT(box,t);
   };
   sel.addEventListener('change',draw); draw();
 }
@@ -2017,7 +2042,7 @@ function renderData(){
     if(!STATE.allSeasons.find(s=>s.season===y))
       tb.innerHTML+=`<tr><td class="name num" style="color:var(--ghost)">${y}</td><td colspan="7" class="muted" style="text-align:right">not recovered</td></tr>`;
   }
-  t.appendChild(tb); p.appendChild(t);
+  t.appendChild(tb); wrapT(p,t);
 
 }
 
@@ -2059,37 +2084,54 @@ function recompute(){
 
 /* ---------- boot ---------- */
 (async function(){
+  const manual = buildManual();
+  let sleeper = [];
+  let failure = null;
+
   try{
-    const sleeper = await loadSleeper();
-    const manual  = buildManual();
-    const seen = new Set(sleeper.map(s=>s.season));
-    STATE.allSeasons = sleeper.concat(manual.filter(m=>!seen.has(m.season))).sort((a,b)=>a.season-b.season);
-    STATE.selected   = new Set(STATE.allSeasons.map(s=>s.season));
-
-    // The forecast is about the live season and deliberately ignores the filter.
-    STATE.forecast = buildForecast(STATE.allSeasons);
-    STATE.loaded   = true;
-
-    recompute();
-
-    const sl=STATE.seasons.filter(s=>s.source==='sleeper').length;
-    const mn=STATE.seasons.length-sl;
-    setStatus(`Loaded ${sl} Sleeper season${sl===1?'':'s'}${mn?` and ${mn} manual`:''}. Last refreshed ${new Date().toLocaleString()}.`);
-
-    if(UNRESOLVED.length){
-      const byOwner = {};
-      UNRESOLVED.forEach(u => (byOwner[u.ownerId] = byOwner[u.ownerId] || []).push(u));
-      console.log('%c' + UNRESOLVED.length + ' roster(s) have no name. Paste these into IDENTITY '
-        + 'and delete any "Unclaimed roster N" lines:', 'color:#F2A33C;font-weight:600');
-      console.log(Object.entries(byOwner).map(([id,list]) =>
-        `  '${id}' : 'NAME_HERE',   // ${list[0].teamName} — roster `
-        + `${list.map(l=>l.rosterId).join('/')} in ${list.map(l=>l.season).join(', ')}`
-        + ` — record ${list[0].record}`
-      ).join('\n'));
-    }
+    sleeper = await loadSleeper();
   }catch(e){
     console.error(e);
-    setStatus('Could not reach the Sleeper API: '+e.message+'. Check the league ID in CONFIG, then reload.', true);
+    failure = e.message || String(e);
+  }
+
+  const seen = new Set(sleeper.map(s=>s.season));
+  STATE.allSeasons = sleeper.concat(manual.filter(m=>!seen.has(m.season)))
+                            .sort((a,b)=>a.season-b.season);
+
+  if(!STATE.allSeasons.length){
+    setStatus('Could not load any league data: ' + (failure||'unknown error') +
+              '. Reload to try again.', true);
+    return;
+  }
+
+  STATE.selected = new Set(STATE.allSeasons.map(s=>s.season));
+  STATE.forecast = buildForecast(STATE.allSeasons);
+  STATE.loaded   = true;
+
+  recompute();
+
+  const sl = STATE.allSeasons.filter(s=>s.source==='sleeper').length;
+  const mn = STATE.allSeasons.length - sl;
+  if(failure){
+    // The NFL.com years live in this file and need no network, so show them
+    // rather than failing the whole page because Sleeper was unreachable.
+    setStatus(`Sleeper is not responding (${failure}). Showing the ${mn} archived `
+      + `season${mn===1?'':'s'} only — reload to try again.`, true);
+  } else {
+    setStatus(`Loaded ${sl} Sleeper season${sl===1?'':'s'}`
+      + (mn?` and ${mn} archived`:'') + `. Last refreshed ${new Date().toLocaleString()}.`);
+  }
+
+  if(UNRESOLVED.length){
+    const byOwner = {};
+    UNRESOLVED.forEach(u => (byOwner[u.ownerId] = byOwner[u.ownerId] || []).push(u));
+    console.log('%c' + UNRESOLVED.length + ' roster(s) have no name. Paste these into IDENTITY:',
+                'color:#F2A33C;font-weight:600');
+    console.log(Object.entries(byOwner).map(([id,list]) =>
+      `  '${id}' : 'NAME_HERE',   // ${list[0].teamName} \u2014 roster `
+      + `${list.map(l=>l.rosterId).join('/')} in ${list.map(l=>l.season).join(', ')}`
+      + ` \u2014 record ${list[0].record}`).join('\n'));
   }
 })();
 </script>
