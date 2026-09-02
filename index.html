@@ -724,8 +724,13 @@ async function loadSeason(lg){
     const lb = await getJSON(`${API}/league/${lg.league_id}/losers_bracket`) || [];
     const who = rid => byRoster[rid] || null;
 
-    // p === 1 in the losers bracket is that bracket's own final
-    const cf = lb.find(m => m.p === 1);
+    // p === 1 marks that bracket's own final. Not every season sets `p`, so
+    // fall back to the last match played in the bracket (highest round).
+    let cf = lb.find(m => m.p === 1);
+    if(!cf && lb.length){
+      const maxR = lb.reduce((mx,m) => (typeof m.r === 'number' && m.r > mx) ? m.r : mx, 0);
+      cf = lb.filter(m => m.r === maxR && m.w).sort((a,b)=>(a.m||0)-(b.m||0))[0];
+    }
     if(cf && cf.w){
       consolationWinner   = who(cf.w) ? who(cf.w).manager : null;
       consolationRunnerUp = who(cf.l) ? who(cf.l).manager : null;
@@ -1215,12 +1220,13 @@ function renderOverview(){
     p.appendChild(el('div','empty','No champions recorded yet. Sleeper fills these in once a playoff bracket completes; earlier years come from the manual history block.'));
   } else {
     const t=el('table');
-    t.innerHTML='<thead><tr><th>Season</th><th>Champion</th><th>Runner-up</th><th>Consolation</th></tr></thead>';
+    t.innerHTML='<thead><tr><th>Season</th><th>Champion</th><th>Runner-up</th><th>Third</th><th>Consolation</th></tr></thead>';
     const tb=el('tbody');
     champs.forEach(s=>{
       tb.innerHTML+=`<tr><td class="name num">${s.season}</td>
         <td class="champ" style="text-align:right">${esc(s.champion)}</td>
         <td>${esc(s.runnerUp||'—')}</td>
+        <td>${esc(s.third||'—')}</td>
         <td class="muted small">${esc(s.consolationWinner||'—')}</td></tr>`;
     });
     t.appendChild(tb); p.appendChild(t);
@@ -1629,8 +1635,6 @@ function renderShame(){
   const p=$('#p-shame'); p.innerHTML='';
   const {rows, tally} = STATE.shame;
   if(!rows.length){ p.appendChild(el('div','empty','No completed seasons yet.')); return; }
-
-  renderTrash(p, trashShame(), 'Trash talk');
 
   p.appendChild(el('h2',null,'The cellar'));
   p.appendChild(el('div','small muted','Bottom two by final regular-season standings. Seasons settled another way can be pinned in the LAST_PLACE block at the top of the file.'));
