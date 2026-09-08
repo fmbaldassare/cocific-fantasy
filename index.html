@@ -319,6 +319,12 @@ const CONFIG = {
 
   eyebrow         : 'Est. 2015 · 18 managers',
 
+  // Optional ADP snapshot for measuring reaches and steals in the draft.
+  // Save the JSON from Fantasy Football Calculator next to this file as
+  // adp.json (see the Draft section for the exact URL). If it is absent the
+  // page simply skips that analysis.
+  adpFile         : 'adp.json',
+
   // How dead last is decided:
   //   'standings'   — worst regular-season record (this is Cocific's rule)
   //   'consolation' — loser of the final game in the losers bracket
@@ -1748,6 +1754,48 @@ function renderShame(){
 
 
 
+
+/* ---------- ADP ---------------------------------------------------------------
+   Optional. Reads a Fantasy Football Calculator snapshot saved as adp.json so
+   picks can be measured against where the wider fantasy world was taking each
+   player. Absent file = section hidden, nothing breaks.
+----------------------------------------------------------------------------- */
+const normName = n => String(n||'')
+  .toLowerCase()
+  .replace(/[.'`\u2019-]/g,'')
+  .replace(/\b(jr|sr|ii|iii|iv|v)\b/g,'')
+  .replace(/\s+/g,' ')
+  .trim();
+
+async function loadADP(){
+  if(!CONFIG.adpFile) return null;
+  try{
+    const res = await fetch(CONFIG.adpFile, {cache:'no-store'});
+    if(!res.ok) return null;
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : (data.players || []);
+    if(!list.length) return null;
+    const map = {};
+    list.forEach(p => {
+      const adp = Number(p.adp ?? p.average_pick ?? p.rank);
+      if(!adp) return;
+      const key = normName(p.name || p.player_name);
+      if(!key) return;
+      map[key] = {adp, pos:p.position, team:p.team, stdev:Number(p.stdev||0)};
+      const withPos = key+'|'+String(p.position||'').toUpperCase();
+      map[withPos] = map[key];
+    });
+    return {map, meta:{teams:data.teams, format:data.format, season:data.year || data.season,
+                       count:list.length}};
+  }catch(e){ console.warn('ADP not loaded:', e.message); return null; }
+}
+
+function adpFor(pick){
+  const A = STATE.adp; if(!A) return null;
+  const k = normName(pick.player);
+  return A.map[k+'|'+String(pick.position||'').toUpperCase()] || A.map[k] || null;
+}
+
 /* ---------- current-season draft report --------------------------------------
    Dormant until Sleeper has picks. The moment the draft finishes it populates
    on the next page load, with no redeploy.
@@ -1760,6 +1808,16 @@ function buildDraftReport(cur){
   // order each position came off the board, e.g. "RB7"
   const seen={};
   picks.forEach(p=>{ seen[p.position]=(seen[p.position]||0)+1; p.posRank=seen[p.position]; });
+
+  // Value against ADP: positive means the player was still there later than the
+  // wider market expected (a steal), negative means a reach.
+  let adpHits=0;
+  picks.forEach(p=>{
+    const a = adpFor(p);
+    p.adp = a ? a.adp : null;
+    p.value = a ? (a.adp - p.pick) : null;
+    if(a) adpHits++;
+  });
 
   const byMgr={};
   picks.forEach(p=>{ (byMgr[p.manager]=byMgr[p.manager]||[]).push(p); });
@@ -1779,6 +1837,8 @@ function buildDraftReport(cur){
       firstQB:firstOf('QB'), firstTE:firstOf('TE'), firstK:firstOf('K'), firstDEF:firstOf('DEF'),
       earlyRB:early.filter(x=>x.position==='RB').length,
       earlyWR:early.filter(x=>x.position==='WR').length,
+      valueSum: ps.filter(x=>x.value!==null).reduce((a,x)=>a+x.value,0),
+      valueN:   ps.filter(x=>x.value!==null).length,
       stackTeam:stack[0], stackN:stack[1]
     };
   }).sort((a,b)=>a.slot-b.slot);
@@ -1791,7 +1851,12 @@ function buildDraftReport(cur){
     inR.forEach(p=>{ c[p.position]=(c[p.position]||0)+1; });
     roundMix.push({round:r, counts:c, n:inR.length});
   }
-  return {picks, rounds, managers, roundMix, teamCount:cur.teamCount};
+  managers.forEach(m => { m.valueAvg = m.valueN ? m.valueSum/m.valueN : null; });
+  const withVal = picks.filter(p=>p.value!==null);
+  const steals  = withVal.slice().sort((a,b)=>b.value-a.value).slice(0,5);
+  const reaches = withVal.slice().sort((a,b)=>a.value-b.value).slice(0,5);
+  return {picks, rounds, managers, roundMix, teamCount:cur.teamCount,
+          adpHits, adpTotal:picks.length, steals, reaches};
 }
 
 function trashDraft(rep){
@@ -1827,6 +1892,18 @@ function trashDraft(rep){
   if(most && fewest && most.RB-fewest.RB>=4)
     out.push(`${n(most.manager)} left with ${most.RB} running backs and ${n(fewest.manager)} with ${fewest.RB}. One of them is running a system.`);
 
+  const valued = rep.managers.filter(m=>m.valueAvg!==null);
+  if(valued.length>2){
+    const best = valued.slice().sort((a,b)=>b.valueAvg-a.valueAvg)[0];
+    const worst= valued.slice().sort((a,b)=>a.valueAvg-b.valueAvg)[0];
+    if(best.valueAvg>0) out.push(`${n(best.manager)} let the board come to him, averaging ${best.valueAvg.toFixed(1)} picks of value per selection. Either patient or asleep.`);
+    if(worst.valueAvg<0) out.push(`${n(worst.manager)} reached by an average of ${Math.abs(worst.valueAvg).toFixed(1)} picks per selection. Nobody was going to take them, but here we are.`);
+    if(rep.reaches.length) { const r=rep.reaches[0];
+      out.push(`${n(r.manager)} took ${n(r.player)} at ${r.pick} when ADP said ${r.adp.toFixed(0)}. That is ${Math.abs(r.value).toFixed(0)} picks early, and he wants you to know it was deliberate.`); }
+    if(rep.steals.length) { const st=rep.steals[0];
+      out.push(`${n(st.player)} lasted until pick ${st.pick} with an ADP of ${st.adp.toFixed(0)}. ${n(st.manager)} did not have to do anything clever, and did not.`); }
+  }
+
   const firstPick = rep.picks[0];
   if(firstPick) out.push(`${n(firstPick.manager)} opened the draft with ${n(firstPick.player)}. Everything that follows is now his fault.`);
   return out;
@@ -1836,14 +1913,18 @@ function renderDraftReport(p, cur){
   const rep = STATE.draftReport;
   if(!rep){
     const box=el('div','card small muted');
-    box.innerHTML = `<b style="color:var(--paper)">Draft not in yet.</b> As soon as Sleeper has the picks, this section fills in on its own — positional breakdown per manager, how each roster compares to what has historically finished well, and the usual commentary. Just reload the page after the draft.`;
+    box.innerHTML = `<b style="color:var(--paper)">Draft not in yet.</b> As soon as Sleeper has the picks, this section fills in on its own — positional breakdown per manager, how each roster compares to what has historically finished well, and the usual commentary. Just reload the page after the draft.`
+      + (STATE.adp ? `<br><br>ADP loaded: ${STATE.adp.meta.count} players, so steals and reaches will be measured too.`
+                   : `<br><br>No <code>adp.json</code> found, so steals and reaches will be skipped. Optional, and it can be added later.`);
     p.appendChild(box);
     return;
   }
 
   p.appendChild(el('h3',null,`${rep.rounds}-round draft`));
+  const hasADP = rep.adpHits > 0;
   const t=el('table');
-  t.innerHTML='<thead><tr><th>Pick</th><th>Manager</th><th>First selection</th><th>QB</th><th>RB</th><th>WR</th><th>TE</th><th>1st QB</th><th>RB/WR in 1-3</th></tr></thead>';
+  t.innerHTML='<thead><tr><th>Pick</th><th>Manager</th><th>First selection</th><th>QB</th><th>RB</th><th>WR</th><th>TE</th><th>1st QB</th><th>RB/WR in 1-3</th>'
+    + (hasADP?'<th>Avg vs ADP</th>':'') + '</tr></thead>';
   const tb=el('tbody');
   rep.managers.forEach(m=>{
     tb.innerHTML+=`<tr>
@@ -1853,9 +1934,34 @@ function renderDraftReport(p, cur){
         <div class="muted small">${m.first?esc(m.first.position+' · '+(m.first.team||'')):''}</div></td>
       <td class="num">${m.QB}</td><td class="num">${m.RB}</td><td class="num">${m.WR}</td><td class="num">${m.TE}</td>
       <td class="num muted">${m.firstQB?'R'+m.firstQB:'—'}</td>
-      <td class="num muted">${m.earlyRB}/${m.earlyWR}</td></tr>`;
+      <td class="num muted">${m.earlyRB}/${m.earlyWR}</td>
+      ${hasADP?`<td class="num ${m.valueAvg===null?'':(m.valueAvg>=0?'pos':'neg')}">${m.valueAvg===null?'—':(m.valueAvg>=0?'+':'')+m.valueAvg.toFixed(1)}</td>`:''}</tr>`;
   });
   t.appendChild(tb); wrapT(p,t);
+
+  if(hasADP){
+    p.appendChild(el('h3',null,'Steals and reaches'));
+    p.appendChild(el('div','small muted',
+      `Measured against average draft position. A positive number means the player was still on the board later than the market expected. ${rep.adpHits} of ${rep.adpTotal} picks matched an ADP entry. ADP data from <a href="https://fantasyfootballcalculator.com" target="_blank" rel="noopener">Fantasy Football Calculator</a>.`));
+    const mk=(title,rows,cls)=>{
+      const c=el('div','card');
+      c.appendChild(el('h3',null,title));
+      const tt=el('table');
+      tt.innerHTML='<thead><tr><th>Player</th><th>Manager</th><th>Pick</th><th>ADP</th><th>Diff</th></tr></thead>';
+      const tbb=el('tbody');
+      rows.forEach(x=>{
+        tbb.innerHTML+=`<tr><td class="name">${esc(x.player)}<div class="muted small">${esc(x.position||'')}</div></td>
+          <td style="text-align:right" class="small">${esc(x.manager)}</td>
+          <td class="num">${x.pick}</td><td class="num muted">${x.adp.toFixed(1)}</td>
+          <td class="num ${cls}">${x.value>=0?'+':''}${x.value.toFixed(1)}</td></tr>`;
+      });
+      tt.appendChild(tbb); c.appendChild(tt); return c;
+    };
+    const g=el('div','grid grid-wide');
+    g.appendChild(mk('Best value', rep.steals, 'cons'));
+    g.appendChild(mk('Biggest reaches', rep.reaches, 'shame-last'));
+    p.appendChild(g);
+  }
 
   // how this draft's choices have historically fared
   const d=STATE.draftInsights;
@@ -2385,6 +2491,8 @@ function recompute(){
     console.error(e);
     failure = e.message || String(e);
   }
+
+  STATE.adp = await loadADP();
 
   const seen = new Set(sleeper.map(s=>s.season));
   STATE.allSeasons = sleeper.concat(manual.filter(m=>!seen.has(m.season)))
