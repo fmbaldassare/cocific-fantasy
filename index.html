@@ -461,88 +461,89 @@ const CO_OWNERS = {
    ------------------------------------------------------------------------- */
 const MANUAL_HISTORY = [
   // The NFL.com years, reconstructed from the league's own historical
-  // spreadsheet (Fantasy_Historico.xlsx). `pf` is regular-season points and
-  // `finish` is the final standing including playoffs. Points against were not
-  // recorded in that era, so PA and point differential show as blank.
+  // spreadsheet (Fantasy_Historico.xlsx). `pf` is regular-season points,
+  // `finish` the final standing including playoffs, and `pick` the draft slot.
+  // Points against were never recorded in that era, so PA and point
+  // differential show as blank.
   { season: 2015, scoring: 'no PPR', playoffSpots: 4, teams: [
-      { manager:'diego678', team:"Pato Ramirez Revival", wins:11, losses:3, ties:0, pf:1315.66, finish:1 },
-      { manager:'jtalvarino', team:"Sultans of Swing", wins:10, losses:4, ties:0, pf:1535.54, finish:2 },
-      { manager:'FM17', team:"Richmond Oilers", wins:9, losses:5, ties:0, pf:1416.26, finish:3 },
-      { manager:'nlarrain', team:"Dillon Panthers", wins:7, losses:7, ties:0, pf:1378.22, finish:4 },
-      { manager:'dvelarde', team:"The Antonios", wins:6, losses:8, ties:0, pf:1218.1, finish:5 },
-      { manager:'NegroCastro', team:"The Irish Hangover", wins:6, losses:8, ties:0, pf:1303.58, finish:6 },   // W-L derived from season totals
-      { manager:'ncastro', team:"The Fujitas", wins:6, losses:8, ties:0, pf:1323.2, finish:7 },
-      { manager:'N. Mora', team:"Arito de Perla", wins:5, losses:9, ties:0, pf:1365.28, finish:8 },
-      { manager:'fbaldassare', team:"Milwaukee Beers", wins:5, losses:9, ties:0, pf:1301.78, finish:9 },
-      { manager:'M. Araos', team:"Los Malosos", wins:5, losses:9, ties:0, pf:1224.6, finish:10 }
+      { manager:'diego678', team:"Pato Ramirez Revival", wins:11, losses:3, ties:0, pf:1315.66, finish:1, pick:4 },
+      { manager:'jtalvarino', team:"Sultans of Swing", wins:10, losses:4, ties:0, pf:1535.54, finish:2, pick:1 },
+      { manager:'FM17', team:"Richmond Oilers", wins:9, losses:5, ties:0, pf:1416.26, finish:3, pick:7 },
+      { manager:'nlarrain', team:"Dillon Panthers", wins:7, losses:7, ties:0, pf:1378.22, finish:4, pick:2 },
+      { manager:'dvelarde', team:"The Antonios", wins:6, losses:8, ties:0, pf:1218.1, finish:5, pick:6 },
+      { manager:'NegroCastro', team:"The Irish Hangover", wins:6, losses:8, ties:0, pf:1303.58, finish:6, pick:3 },   // W-L derived from season totals
+      { manager:'ncastro', team:"The Fujitas", wins:6, losses:8, ties:0, pf:1323.2, finish:7, pick:10 },
+      { manager:'N. Mora', team:"Arito de Perla", wins:5, losses:9, ties:0, pf:1365.28, finish:8, pick:9 },
+      { manager:'fbaldassare', team:"Milwaukee Beers", wins:5, losses:9, ties:0, pf:1301.78, finish:9, pick:5 },
+      { manager:'M. Araos', team:"Los Malosos", wins:5, losses:9, ties:0, pf:1224.6, finish:10, pick:8 }
   ] },
 
   { season: 2016, scoring: 'full PPR', playoffSpots: 4, teams: [
-      { manager:'fjgonzalezb', team:"Don't Hassle with the Hoff", wins:9, losses:5, ties:0, pf:1493.18, finish:1 },
-      { manager:'N. Mora', team:"Nueve Mentiroso", wins:10, losses:4, ties:0, pf:1803.42, finish:2 },
-      { manager:'fbaldassare', team:"Milwaukee Beers", wins:10, losses:4, ties:0, pf:1618.04, finish:3 },
-      { manager:'Rura', team:"Rura's Buyers Club", wins:8, losses:6, ties:0, pf:1607.12, finish:4 },
-      { manager:'nlarrain', team:"Pumalin Pumas", wins:8, losses:6, ties:0, pf:1555.78, finish:5 },
-      { manager:'M. Araos', team:"The Bodoques", wins:8, losses:6, ties:0, pf:1542.98, finish:6 },
-      { manager:'NegroCastro', team:"Beef Cake", wins:7, losses:7, ties:0, pf:1638.84, finish:7 },
-      { manager:'jtalvarino', team:"The Old School Tanks", wins:7, losses:7, ties:0, pf:1643.24, finish:8 },
-      { manager:'dvelarde', team:"The Stolen Montgomerys", wins:7, losses:7, ties:0, pf:1592.16, finish:9 },   // W-L derived from season totals
-      { manager:'diego678', team:"Pato Ramirez Revival", wins:6, losses:8, ties:0, pf:1641.74, finish:10 },
-      { manager:'FM17', team:"Richmond Oilers", wins:5, losses:9, ties:0, pf:1483.64, finish:11 },
-      { manager:'ncastro', team:"The Fujitas", wins:5, losses:9, ties:0, pf:1561.7, finish:12 },
-      { manager:'Jpsilva01', team:"The Locker Room", wins:4, losses:10, ties:0, pf:1528.8, finish:13 },
-      { manager:'JJuarez', team:"Corvallis Sasquatches", wins:4, losses:10, ties:0, pf:1290.8, finish:14 }
+      { manager:'fjgonzalezb', team:"Don't Hassle with the Hoff", wins:9, losses:5, ties:0, pf:1493.18, finish:1, pick:14 },
+      { manager:'N. Mora', team:"Nueve Mentiroso", wins:10, losses:4, ties:0, pf:1803.42, finish:2, pick:6 },
+      { manager:'fbaldassare', team:"Milwaukee Beers", wins:10, losses:4, ties:0, pf:1618.04, finish:3, pick:1 },
+      { manager:'Rura', team:"Rura's Buyers Club", wins:8, losses:6, ties:0, pf:1607.12, finish:4, pick:4 },
+      { manager:'nlarrain', team:"Pumalin Pumas", wins:8, losses:6, ties:0, pf:1555.78, finish:5, pick:11 },
+      { manager:'M. Araos', team:"The Bodoques", wins:8, losses:6, ties:0, pf:1542.98, finish:6, pick:9 },
+      { manager:'NegroCastro', team:"Beef Cake", wins:7, losses:7, ties:0, pf:1638.84, finish:7, pick:13 },
+      { manager:'jtalvarino', team:"The Old School Tanks", wins:7, losses:7, ties:0, pf:1643.24, finish:8, pick:2 },
+      { manager:'dvelarde', team:"The Stolen Montgomerys", wins:7, losses:7, ties:0, pf:1592.16, finish:9, pick:8 },   // W-L derived from season totals
+      { manager:'diego678', team:"Pato Ramirez Revival", wins:6, losses:8, ties:0, pf:1641.74, finish:10, pick:5 },
+      { manager:'FM17', team:"Richmond Oilers", wins:5, losses:9, ties:0, pf:1483.64, finish:11, pick:10 },
+      { manager:'ncastro', team:"The Fujitas", wins:5, losses:9, ties:0, pf:1561.7, finish:12, pick:12 },
+      { manager:'Jpsilva01', team:"The Locker Room", wins:4, losses:10, ties:0, pf:1528.8, finish:13, pick:3 },
+      { manager:'JJuarez', team:"Corvallis Sasquatches", wins:4, losses:10, ties:0, pf:1290.8, finish:14, pick:7 }
   ] },
 
   { season: 2017, scoring: 'half PPR', playoffSpots: 4, teams: [
-      { manager:'diego678', team:"Lotta Swagger", wins:11, losses:3, ties:0, pf:1475.56, finish:1 },
-      { manager:'fbaldassare', team:"Tasmania Beers", wins:9, losses:5, ties:0, pf:1418.36, finish:2 },
-      { manager:'Jpsilva01', team:"The Locker Room", wins:9, losses:5, ties:0, pf:1347.48, finish:3 },
-      { manager:'fjgonzalezb', team:"Don't Hassle with the Hoff", wins:8, losses:6, ties:0, pf:1359.82, finish:4 },
-      { manager:'N. Mora', team:"Nueve Mentiroso", wins:7, losses:7, ties:0, pf:1403.16, finish:5 },
-      { manager:'nlarrain', team:"Pumalin Pumas", wins:8, losses:6, ties:0, pf:1402.9, finish:6 },
-      { manager:'FM17', team:"Richmond Oilers", wins:7, losses:7, ties:0, pf:1358.62, finish:7 },
-      { manager:'josekutz', team:"Medulla Oblongata", wins:7, losses:7, ties:0, pf:1468.02, finish:8 },
-      { manager:'jtalvarino', team:"Average Joe's", wins:6, losses:8, ties:0, pf:1309.2, finish:9 },
-      { manager:'NegroCastro', team:"Antofagasta Dreaming", wins:6, losses:8, ties:0, pf:1321.32, finish:10 },
-      { manager:'JJuarez', team:"Corvallis Sasquatches", wins:6, losses:8, ties:0, pf:1332.26, finish:11 },
-      { manager:'Rura', team:"Rura's Buyers Club", wins:5, losses:9, ties:0, pf:1347.1, finish:12 },
-      { manager:'ncastro', team:"The Fujitas", wins:5, losses:9, ties:0, pf:1311.48, finish:13 },
-      { manager:'dvelarde', team:"Italian Stallions", wins:4, losses:10, ties:0, pf:1184.56, finish:14 }
+      { manager:'diego678', team:"Lotta Swagger", wins:11, losses:3, ties:0, pf:1475.56, finish:1, pick:3 },
+      { manager:'fbaldassare', team:"Tasmania Beers", wins:9, losses:5, ties:0, pf:1418.36, finish:2, pick:7 },
+      { manager:'Jpsilva01', team:"The Locker Room", wins:9, losses:5, ties:0, pf:1347.48, finish:3, pick:12 },
+      { manager:'fjgonzalezb', team:"Don't Hassle with the Hoff", wins:8, losses:6, ties:0, pf:1359.82, finish:4, pick:14 },
+      { manager:'N. Mora', team:"Nueve Mentiroso", wins:7, losses:7, ties:0, pf:1403.16, finish:5, pick:10 },
+      { manager:'nlarrain', team:"Pumalin Pumas", wins:8, losses:6, ties:0, pf:1402.9, finish:6, pick:9 },
+      { manager:'FM17', team:"Richmond Oilers", wins:7, losses:7, ties:0, pf:1358.62, finish:7, pick:4 },
+      { manager:'josekutz', team:"Medulla Oblongata", wins:7, losses:7, ties:0, pf:1468.02, finish:8, pick:13 },
+      { manager:'jtalvarino', team:"Average Joe's", wins:6, losses:8, ties:0, pf:1309.2, finish:9, pick:1 },
+      { manager:'NegroCastro', team:"Antofagasta Dreaming", wins:6, losses:8, ties:0, pf:1321.32, finish:10, pick:5 },
+      { manager:'JJuarez', team:"Corvallis Sasquatches", wins:6, losses:8, ties:0, pf:1332.26, finish:11, pick:2 },
+      { manager:'Rura', team:"Rura's Buyers Club", wins:5, losses:9, ties:0, pf:1347.1, finish:12, pick:11 },
+      { manager:'ncastro', team:"The Fujitas", wins:5, losses:9, ties:0, pf:1311.48, finish:13, pick:6 },
+      { manager:'dvelarde', team:"Italian Stallions", wins:4, losses:10, ties:0, pf:1184.56, finish:14, pick:8 }
   ] },
 
   { season: 2018, scoring: 'half PPR', playoffSpots: 4, teams: [
-      { manager:'dvelarde', team:"Counts of Monte Fisto", wins:9, losses:5, ties:0, pf:1533.84, finish:1 },
-      { manager:'NegroCastro', team:"Soul Glo", wins:9, losses:5, ties:0, pf:1621.34, finish:2 },
-      { manager:'N. Mora', team:"Nueve Mentiroso", wins:10, losses:4, ties:0, pf:1570.44, finish:3 },
-      { manager:'nlarrain', team:"Pumalin Pumas", wins:11, losses:3, ties:0, pf:1704.58, finish:4 },
-      { manager:'josekutz', team:"Medulla Oblongata", wins:8, losses:6, ties:0, pf:1654.76, finish:5 },
-      { manager:'Jpsilva01', team:"The Locker Room", wins:8, losses:6, ties:0, pf:1512.6, finish:6 },
-      { manager:'fjgonzalezb', team:"Don't Hassle with the Hoff", wins:7, losses:7, ties:0, pf:1363.92, finish:7 },
-      { manager:'fbaldassare', team:"Llolleo Beers", wins:6, losses:8, ties:0, pf:1522.04, finish:8 },
-      { manager:'FM17', team:"Richmond Oilers", wins:6, losses:8, ties:0, pf:1452.04, finish:9 },
-      { manager:'ncastro', team:"The Fujitas", wins:5, losses:9, ties:0, pf:1436.6, finish:10 },
-      { manager:'diego678', team:"Lotta Swagger", wins:5, losses:9, ties:0, pf:1377.3, finish:11 },
-      { manager:'jtalvarino', team:"Average Joe's", wins:5, losses:9, ties:0, pf:1343.28, finish:12 },
-      { manager:'Rura', team:"Rura's Buyers Club", wins:5, losses:9, ties:0, pf:1394.34, finish:13 },
-      { manager:'JJuarez', team:"Corvallis Sasquatches", wins:4, losses:10, ties:0, pf:1400.64, finish:14 }
+      { manager:'dvelarde', team:"Counts of Monte Fisto", wins:9, losses:5, ties:0, pf:1533.84, finish:1, pick:7 },
+      { manager:'NegroCastro', team:"Soul Glo", wins:9, losses:5, ties:0, pf:1621.34, finish:2, pick:3 },
+      { manager:'N. Mora', team:"Nueve Mentiroso", wins:10, losses:4, ties:0, pf:1570.44, finish:3, pick:8 },
+      { manager:'nlarrain', team:"Pumalin Pumas", wins:11, losses:3, ties:0, pf:1704.58, finish:4, pick:9 },
+      { manager:'josekutz', team:"Medulla Oblongata", wins:8, losses:6, ties:0, pf:1654.76, finish:5, pick:10 },
+      { manager:'Jpsilva01', team:"The Locker Room", wins:8, losses:6, ties:0, pf:1512.6, finish:6, pick:14 },
+      { manager:'fjgonzalezb', team:"Don't Hassle with the Hoff", wins:7, losses:7, ties:0, pf:1363.92, finish:7, pick:12 },
+      { manager:'fbaldassare', team:"Llolleo Beers", wins:6, losses:8, ties:0, pf:1522.04, finish:8, pick:6 },
+      { manager:'FM17', team:"Richmond Oilers", wins:6, losses:8, ties:0, pf:1452.04, finish:9, pick:5 },
+      { manager:'ncastro', team:"The Fujitas", wins:5, losses:9, ties:0, pf:1436.6, finish:10, pick:1 },
+      { manager:'diego678', team:"Lotta Swagger", wins:5, losses:9, ties:0, pf:1377.3, finish:11, pick:4 },
+      { manager:'jtalvarino', team:"Average Joe's", wins:5, losses:9, ties:0, pf:1343.28, finish:12, pick:2 },
+      { manager:'Rura', team:"Rura's Buyers Club", wins:5, losses:9, ties:0, pf:1394.34, finish:13, pick:11 },
+      { manager:'JJuarez', team:"Corvallis Sasquatches", wins:4, losses:10, ties:0, pf:1400.64, finish:14, pick:13 }
   ] },
 
   { season: 2019, scoring: 'half PPR', playoffSpots: 4, teams: [
-      { manager:'Jpsilva01', team:"The Locker Room", wins:7, losses:7, ties:0, pf:1397.96, finish:1 },
-      { manager:'ncastro', team:"The Fujitas", wins:8, losses:6, ties:0, pf:1328.96, finish:2 },
-      { manager:'NegroCastro', team:"West Canaan Coyotes", wins:10, losses:4, ties:0, pf:1534.06, finish:3 },
-      { manager:'fjgonzalezb', team:"Don't Hassle with the Hoff", wins:11, losses:3, ties:0, pf:1610.06, finish:4 },
-      { manager:'dvelarde', team:"La Calera Doctors", wins:7, losses:7, ties:0, pf:1434.64, finish:5 },
-      { manager:'jtalvarino', team:"Average Joe's", wins:7, losses:7, ties:0, pf:1492.44, finish:6 },
-      { manager:'josekutz', team:"Lu", wins:7, losses:7, ties:0, pf:1417, finish:7 },
-      { manager:'nlarrain', team:"Pumalin Pumas", wins:7, losses:7, ties:0, pf:1461.42, finish:8 },
-      { manager:'diego678', team:"Lotta Swagger", wins:6, losses:8, ties:0, pf:1360.36, finish:9 },
-      { manager:'N. Mora', team:"Nueve Mentiroso", wins:6, losses:8, ties:0, pf:1507.72, finish:10 },   // W-L derived from season totals
-      { manager:'Rura', team:"Rura's Buyers Club", wins:6, losses:8, ties:0, pf:1258.78, finish:11 },
-      { manager:'JJuarez', team:"Corvallis Sasquatches", wins:6, losses:8, ties:0, pf:1406.46, finish:12 },
-      { manager:'fbaldassare', team:"Milwaukee Beers", wins:5, losses:9, ties:0, pf:1347.36, finish:13 },
-      { manager:'FM17', team:"Richmond Oilers", wins:5, losses:9, ties:0, pf:1393.82, finish:14 }
+      { manager:'Jpsilva01', team:"The Locker Room", wins:7, losses:7, ties:0, pf:1397.96, finish:1, pick:6 },
+      { manager:'ncastro', team:"The Fujitas", wins:8, losses:6, ties:0, pf:1328.96, finish:2, pick:13 },
+      { manager:'NegroCastro', team:"West Canaan Coyotes", wins:10, losses:4, ties:0, pf:1534.06, finish:3, pick:3 },
+      { manager:'fjgonzalezb', team:"Don't Hassle with the Hoff", wins:11, losses:3, ties:0, pf:1610.06, finish:4, pick:10 },
+      { manager:'dvelarde', team:"La Calera Doctors", wins:7, losses:7, ties:0, pf:1434.64, finish:5, pick:14 },
+      { manager:'jtalvarino', team:"Average Joe's", wins:7, losses:7, ties:0, pf:1492.44, finish:6, pick:4 },
+      { manager:'josekutz', team:"Lu", wins:7, losses:7, ties:0, pf:1417, finish:7, pick:9 },
+      { manager:'nlarrain', team:"Pumalin Pumas", wins:7, losses:7, ties:0, pf:1461.42, finish:8, pick:12 },
+      { manager:'diego678', team:"Lotta Swagger", wins:6, losses:8, ties:0, pf:1360.36, finish:9, pick:1 },
+      { manager:'N. Mora', team:"Nueve Mentiroso", wins:6, losses:8, ties:0, pf:1507.72, finish:10, pick:2 },   // W-L derived from season totals
+      { manager:'Rura', team:"Rura's Buyers Club", wins:6, losses:8, ties:0, pf:1258.78, finish:11, pick:11 },
+      { manager:'JJuarez', team:"Corvallis Sasquatches", wins:6, losses:8, ties:0, pf:1406.46, finish:12, pick:7 },
+      { manager:'fbaldassare', team:"Milwaukee Beers", wins:5, losses:9, ties:0, pf:1347.36, finish:13, pick:8 },
+      { manager:'FM17', team:"Richmond Oilers", wins:5, losses:9, ties:0, pf:1393.82, finish:14, pick:5 }
   ] },
 ];
 
@@ -818,6 +819,12 @@ async function loadSeason(lg){
     }
   }catch(e){}
 
+  // round-1 order is the draft slot
+  const slotOf = {};
+  draft.filter(d=>d.round===1).sort((a,b)=>a.pick-b.pick)
+       .forEach((d,i)=> { if(slotOf[d.manager]===undefined) slotOf[d.manager]=i+1; });
+  teams.forEach(t => { t.draftSlot = slotOf[t.manager] || null; });
+
   return {
     season:+lg.season, source:'sleeper', leagueId:lg.league_id, name:lg.name,
     teams, byRoster, weeks, schedule, regEnd, champion, runnerUp, draft,
@@ -837,6 +844,7 @@ function buildManual(){
   return MANUAL_HISTORY.map(h => {
     const teams = (h.teams||[]).map((t,i) => ({
       rosterId:'m'+i, manager:canon({name:t.manager}), teamName:t.team || t.manager,
+      draftSlot: t.pick||null,
       wins:t.wins||0, losses:t.losses||0, ties:t.ties||0,
       pf:t.pf||0, pa:(t.pa===undefined||t.pa===null)?null:t.pa, finish:t.finish
     }));
@@ -1739,6 +1747,140 @@ function renderShame(){
 }
 
 
+
+/* ---------- current-season draft report --------------------------------------
+   Dormant until Sleeper has picks. The moment the draft finishes it populates
+   on the next page load, with no redeploy.
+----------------------------------------------------------------------------- */
+function buildDraftReport(cur){
+  if(!cur || !cur.draft || !cur.draft.length) return null;
+  const picks = cur.draft.slice().sort((a,b)=>a.pick-b.pick);
+  const rounds = Math.max(...picks.map(p=>p.round));
+
+  // order each position came off the board, e.g. "RB7"
+  const seen={};
+  picks.forEach(p=>{ seen[p.position]=(seen[p.position]||0)+1; p.posRank=seen[p.position]; });
+
+  const byMgr={};
+  picks.forEach(p=>{ (byMgr[p.manager]=byMgr[p.manager]||[]).push(p); });
+
+  const managers = Object.entries(byMgr).map(([m,ps])=>{
+    const count = pos => ps.filter(x=>x.position===pos).length;
+    const firstOf = pos => { const f=ps.find(x=>x.position===pos); return f?f.round:null; };
+    const early = ps.filter(x=>x.round<=3);
+    const teams = {};
+    ps.forEach(x=>{ if(x.team) teams[x.team]=(teams[x.team]||0)+1; });
+    const stack = Object.entries(teams).sort((a,b)=>b[1]-a[1])[0] || [null,0];
+    return {
+      manager:m, slot:ps[0] ? ps[0].pick : null, picks:ps,
+      first: ps[0],
+      QB:count('QB'), RB:count('RB'), WR:count('WR'), TE:count('TE'),
+      K:count('K'), DEF:count('DEF'),
+      firstQB:firstOf('QB'), firstTE:firstOf('TE'), firstK:firstOf('K'), firstDEF:firstOf('DEF'),
+      earlyRB:early.filter(x=>x.position==='RB').length,
+      earlyWR:early.filter(x=>x.position==='WR').length,
+      stackTeam:stack[0], stackN:stack[1]
+    };
+  }).sort((a,b)=>a.slot-b.slot);
+
+  // positional shape of each round
+  const roundMix=[];
+  for(let r=1;r<=rounds;r++){
+    const inR=picks.filter(p=>p.round===r);
+    const c={};
+    inR.forEach(p=>{ c[p.position]=(c[p.position]||0)+1; });
+    roundMix.push({round:r, counts:c, n:inR.length});
+  }
+  return {picks, rounds, managers, roundMix, teamCount:cur.teamCount};
+}
+
+function trashDraft(rep){
+  const out=[]; if(!rep) return out;
+  const n = v => esc(v);
+  const M = rep.managers;
+
+  const kicker = M.filter(m=>m.firstK).sort((a,b)=>a.firstK-b.firstK)[0];
+  if(kicker && kicker.firstK <= rep.rounds-2)
+    out.push(`${n(kicker.manager)} spent a round ${kicker.firstK} pick on a kicker. There were still starters on the board, but sure.`);
+
+  const withQB = M.filter(m=>m.firstQB);
+  if(withQB.length>1){
+    const early = withQB.slice().sort((a,b)=>a.firstQB-b.firstQB)[0];
+    const late  = withQB.slice().sort((a,b)=>b.firstQB-a.firstQB)[0];
+    if(early.firstQB<=3) out.push(`${n(early.manager)} took a quarterback in round ${early.firstQB}, before anyone else. Confidence or panic, we will find out.`);
+    if(late.firstQB>=10) out.push(`${n(late.manager)} waited until round ${late.firstQB} for a quarterback. Either the sharpest man in the room or someone who forgot.`);
+  }
+
+  const noQB = M.filter(m=>!m.QB);
+  if(noQB.length) out.push(`${noQB.map(m=>n(m.manager)).join(', ')} finished the draft without a quarterback. Bold does not begin to cover it.`);
+
+  const rbHeavy = M.slice().sort((a,b)=>b.earlyRB-a.earlyRB)[0];
+  if(rbHeavy && rbHeavy.earlyRB>=3)
+    out.push(`${n(rbHeavy.manager)} took ${rbHeavy.earlyRB} running backs in the first three rounds. A strategy, or at least a decision.`);
+
+  const stacked = M.filter(m=>m.stackN>=3).sort((a,b)=>b.stackN-a.stackN)[0];
+  if(stacked)
+    out.push(`${n(stacked.manager)} drafted ${stacked.stackN} players from ${n(stacked.stackTeam)}. When that bye week arrives, remember this moment.`);
+
+  const most = M.slice().sort((a,b)=>b.RB-a.RB)[0];
+  const fewest = M.slice().sort((a,b)=>a.RB-b.RB)[0];
+  if(most && fewest && most.RB-fewest.RB>=4)
+    out.push(`${n(most.manager)} left with ${most.RB} running backs and ${n(fewest.manager)} with ${fewest.RB}. One of them is running a system.`);
+
+  const firstPick = rep.picks[0];
+  if(firstPick) out.push(`${n(firstPick.manager)} opened the draft with ${n(firstPick.player)}. Everything that follows is now his fault.`);
+  return out;
+}
+
+function renderDraftReport(p, cur){
+  const rep = STATE.draftReport;
+  if(!rep){
+    const box=el('div','card small muted');
+    box.innerHTML = `<b style="color:var(--paper)">Draft not in yet.</b> As soon as Sleeper has the picks, this section fills in on its own — positional breakdown per manager, how each roster compares to what has historically finished well, and the usual commentary. Just reload the page after the draft.`;
+    p.appendChild(box);
+    return;
+  }
+
+  p.appendChild(el('h3',null,`${rep.rounds}-round draft`));
+  const t=el('table');
+  t.innerHTML='<thead><tr><th>Pick</th><th>Manager</th><th>First selection</th><th>QB</th><th>RB</th><th>WR</th><th>TE</th><th>1st QB</th><th>RB/WR in 1-3</th></tr></thead>';
+  const tb=el('tbody');
+  rep.managers.forEach(m=>{
+    tb.innerHTML+=`<tr>
+      <td class="rank">${m.slot||''}</td>
+      <td class="name">${esc(m.manager)}</td>
+      <td style="text-align:right">${m.first?esc(m.first.player):'—'}
+        <div class="muted small">${m.first?esc(m.first.position+' · '+(m.first.team||'')):''}</div></td>
+      <td class="num">${m.QB}</td><td class="num">${m.RB}</td><td class="num">${m.WR}</td><td class="num">${m.TE}</td>
+      <td class="num muted">${m.firstQB?'R'+m.firstQB:'—'}</td>
+      <td class="num muted">${m.earlyRB}/${m.earlyWR}</td></tr>`;
+  });
+  t.appendChild(tb); wrapT(p,t);
+
+  // how this draft's choices have historically fared
+  const d=STATE.draftInsights;
+  if(d && d.opener.length){
+    p.appendChild(el('h3',null,'Against the league\u2019s own history'));
+    p.appendChild(el('div','small muted','Where each opening-pick position has finished on average in past seasons. A small sample and not a prediction \u2014 the Playoff odds below are the actual forecast.'));
+    const used = {};
+    rep.managers.forEach(m=>{ if(m.first) (used[m.first.position]=used[m.first.position]||[]).push(m.manager); });
+    const t2=el('table');
+    t2.innerHTML='<thead><tr><th>Opened with</th><th>This year</th><th>Past team-seasons</th><th>Avg finish</th><th>Titles</th></tr></thead>';
+    const tb2=el('tbody');
+    Object.entries(used).forEach(([pos,mgrs])=>{
+      const h=d.opener.find(x=>x.key===pos);
+      tb2.innerHTML+=`<tr><td class="name">${esc(pos)}</td>
+        <td style="text-align:right" class="small">${mgrs.map(esc).join(', ')}</td>
+        <td class="num">${h?h.n:'—'}</td>
+        <td class="num">${h?'top '+(h.avg*100).toFixed(0)+'%':'no history'}</td>
+        <td class="num champ">${h&&h.titles?h.titles:''}</td></tr>`;
+    });
+    t2.appendChild(tb2); wrapT(p,t2);
+  }
+
+  renderTrash(p, trashDraft(rep), 'Draft reaction');
+}
+
 function renderForecast(){
   const p=$('#p-forecast'); p.innerHTML='';
   const f=STATE.forecast;
@@ -1747,6 +1889,10 @@ function renderForecast(){
 
   p.appendChild(el('h2',null,`${f.season} season`));
   p.appendChild(el('div','small muted','This tab always covers the live season and ignores the season filter above.'));
+
+  /* ---- draft ---- */
+  p.appendChild(el('h2',null,'The draft'));
+  renderDraftReport(p, cur);
 
   /* ---- where things stand ---- */
   if(f.weeksPlayed === 0){
@@ -1999,10 +2145,153 @@ function renderRecords(){
   }
 }
 
+
+/* ---------- draft insights ---------------------------------------------------
+   What the league's own history says about drafting. Two caveats stated on the
+   page: the sample is small, and none of this is causal — it describes what
+   happened, not what will.
+----------------------------------------------------------------------------- */
+
+// A comparable finishing order for every season. Manual seasons carry a real
+// final standing; for Sleeper seasons it is reconstructed as champion, runner-up,
+// third, remaining playoff teams by record, then everyone else by record.
+function finalOrder(s){
+  if(s.teams.some(t=>t.finish))
+    return s.teams.slice().sort((a,b)=>(a.finish||99)-(b.finish||99)).map(t=>t.manager);
+  const po=new Set(s.playoffTeams||[]);
+  const byRec=(a,b)=>(b.wins-a.wins)||(b.pf-a.pf);
+  const named=[s.champion,s.runnerUp,s.third].filter(Boolean);
+  const rest=s.teams.filter(t=>!named.includes(t.manager));
+  return named
+    .concat(rest.filter(t=>po.has(t.manager)).sort(byRec).map(t=>t.manager))
+    .concat(rest.filter(t=>!po.has(t.manager)).sort(byRec).map(t=>t.manager));
+}
+
+function buildDraftInsights(seasons){
+  const slot={}, opener={}, qbRound={}, rbHeavy={n:0,sum:0}, wrHeavy={n:0,sum:0};
+  let slotSeasons=0, posSeasons=0;
+
+  seasons.forEach(s=>{
+    const order = finalOrder(s);
+    if(!order.length) return;
+    const n = order.length;
+    const pctOf = m => { const i=order.indexOf(m); return i<0 ? null : i/(n-1); };
+    const champ = s.champion;
+    const po = new Set(s.playoffTeams||[]);
+
+    // ---- draft slot vs outcome (both eras) ----
+    if(s.teams.some(t=>t.draftSlot)){
+      slotSeasons++;
+      s.teams.forEach(t=>{
+        if(!t.draftSlot) return;
+        const p = pctOf(t.manager); if(p===null) return;
+        const k = t.draftSlot;
+        const e = slot[k] = slot[k] || {n:0, sum:0, titles:0, playoffs:0};
+        e.n++; e.sum+=p;
+        if(t.manager===champ) e.titles++;
+        if(po.has(t.manager)) e.playoffs++;
+      });
+    }
+
+    // ---- what they took, and when (Sleeper only: needs positions) ----
+    if(s.draft && s.draft.length){
+      posSeasons++;
+      const byMgr={};
+      s.draft.forEach(d=>{ (byMgr[d.manager]=byMgr[d.manager]||[]).push(d); });
+      Object.entries(byMgr).forEach(([m,picks])=>{
+        const p = pctOf(m); if(p===null) return;
+        picks.sort((a,b)=>a.pick-b.pick);
+
+        const first = picks[0];
+        if(first && first.position){
+          const e = opener[first.position] = opener[first.position] || {n:0,sum:0,titles:0,playoffs:0};
+          e.n++; e.sum+=p;
+          if(m===champ) e.titles++;
+          if(po.has(m)) e.playoffs++;
+        }
+
+        const qb = picks.find(x=>x.position==='QB');
+        if(qb){
+          const band = qb.round<=3 ? 'Rounds 1-3' : qb.round<=6 ? 'Rounds 4-6'
+                     : qb.round<=9 ? 'Rounds 7-9' : 'Round 10+';
+          const e = qbRound[band] = qbRound[band] || {n:0,sum:0,titles:0,playoffs:0};
+          e.n++; e.sum+=p;
+          if(m===champ) e.titles++;
+          if(po.has(m)) e.playoffs++;
+        }
+
+        const early = picks.filter(x=>x.round<=3);
+        const rb = early.filter(x=>x.position==='RB').length;
+        const wr = early.filter(x=>x.position==='WR').length;
+        if(rb>wr){ rbHeavy.n++; rbHeavy.sum+=p; }
+        else if(wr>rb){ wrHeavy.n++; wrHeavy.sum+=p; }
+      });
+    }
+  });
+
+  const tidy = obj => Object.entries(obj).map(([k,v])=>({
+    key:k, n:v.n, avg:v.sum/v.n, titles:v.titles, poRate:v.playoffs/v.n
+  }));
+  return {
+    slot: tidy(slot).sort((a,b)=>a.key-b.key),
+    opener: tidy(opener).sort((a,b)=>a.avg-b.avg),
+    qbRound: tidy(qbRound).sort((a,b)=>a.avg-b.avg),
+    rbHeavy, wrHeavy, slotSeasons, posSeasons
+  };
+}
+
+function renderDraftInsights(p){
+  const d = STATE.draftInsights;
+  if(!d) return;
+  const pct = v => (v*100).toFixed(0);
+  const place = v => `top ${pct(v)}%`;
+
+  const table = (title, rows, label, note) => {
+    if(!rows.length) return;
+    p.appendChild(el('h3',null,title));
+    if(note) p.appendChild(el('div','small muted',note));
+    const t=el('table');
+    t.innerHTML=`<thead><tr><th>${label}</th><th>Team-seasons</th><th>Avg finish</th><th>Made playoffs</th><th>Titles</th></tr></thead>`;
+    const tb=el('tbody');
+    rows.forEach(r=>{
+      const thin = r.n < 6;
+      tb.innerHTML+=`<tr><td class="name">${esc(r.key)}${thin?'<span class="tag">small sample</span>':''}</td>
+        <td class="num">${r.n}</td>
+        <td class="num">${place(r.avg)}</td>
+        <td class="num">${pct(r.poRate)}%</td>
+        <td class="num champ">${r.titles||''}</td></tr>`;
+    });
+    t.appendChild(tb); wrapT(p,t);
+  };
+
+  p.appendChild(el('h2',null,'What has actually worked'));
+  p.appendChild(el('div','small muted','Avg finish is where a team ended up as a share of the league, so a lower number is better and it stays comparable across 10-team and 14-team seasons. Everything here is descriptive: with this few drafts, none of it proves a strategy causes a result.'));
+
+  table(`Draft slot`, d.slot, 'Pick', `Across ${d.slotSeasons} seasons with a recorded draft order, including the NFL.com years.`);
+
+  table(`First pick taken`, d.opener, 'Position',
+    `Sleeper seasons only (${d.posSeasons} drafts) — the NFL.com spreadsheet recorded who drafted where, but not which players.`);
+
+  table(`When the first QB went`, d.qbRound, 'Round',
+    'Each manager grouped by how early they took their first quarterback.');
+
+  if(d.rbHeavy.n && d.wrHeavy.n){
+    p.appendChild(el('h3',null,'Rounds 1-3: running backs or receivers'));
+    const t=el('table');
+    t.innerHTML='<thead><tr><th>Approach</th><th>Team-seasons</th><th>Avg finish</th></tr></thead>';
+    const tb=el('tbody');
+    tb.innerHTML=`<tr><td class="name">More RBs than WRs</td><td class="num">${d.rbHeavy.n}</td><td class="num">top ${pct(d.rbHeavy.sum/d.rbHeavy.n)}%</td></tr>
+      <tr><td class="name">More WRs than RBs</td><td class="num">${d.wrHeavy.n}</td><td class="num">top ${pct(d.wrHeavy.sum/d.wrHeavy.n)}%</td></tr>`;
+    t.appendChild(tb); wrapT(p,t,false);
+  }
+}
+
 function renderDrafts(){
   const p=$('#p-drafts'); p.innerHTML='';
+  renderDraftInsights(p);
   const ds=STATE.seasons.filter(s=>s.draft.length).sort((a,b)=>b.season-a.season);
-  if(!ds.length){ p.appendChild(el('div','empty','No draft data yet. Sleeper drafts appear here once a draft completes.')); return; }
+  if(!ds.length){ p.appendChild(el('div','empty','No pick-by-pick draft board yet — Sleeper drafts appear here once a draft completes.')); return; }
+  p.appendChild(el('h2',null,'Draft boards'));
   const ctr=el('div','controls'); const sel=el('select');
   ds.forEach(s=>{const o=el('option',null,String(s.season)); o.value=s.season; sel.appendChild(o);});
   ctr.appendChild(sel); p.appendChild(ctr);
@@ -2076,6 +2365,8 @@ function recompute(){
   STATE.recReg   = buildRecords(STATE.seasons,'reg');
   STATE.recPost  = buildRecords(STATE.seasons,'post');
   STATE.shame    = buildShame(STATE.seasons);
+  STATE.draftInsights = buildDraftInsights(STATE.seasons);
+  STATE.draftReport   = buildDraftReport(STATE.allSeasons.filter(s=>s.source==='sleeper').pop());
 
   renderStrip(); renderOverview(); renderSeasons(); renderMatchups();
   renderAllTime(); renderH2H(); renderRecords(); renderForecast();
