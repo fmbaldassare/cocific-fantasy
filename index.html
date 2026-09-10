@@ -591,6 +591,11 @@ async function getJSON(url){
 }
 
 /* ---------- load the whole Sleeper chain ---------- */
+async function loadNflState(){
+  try{ return await getJSON(`${API}/state/nfl`); }
+  catch(e){ console.warn('NFL state unavailable:', e.message); return null; }
+}
+
 async function loadSleeper(){
   const chain = [];
   let id = CONFIG.currentLeagueId;
@@ -722,6 +727,35 @@ async function loadSeason(lg){
     weeks.push({ week:i+1, games, allScores:solo, isPlayoff:(i+1)>regEnd });
   });
 
+  // A week is only final once the NFL has moved past it. Sleeper's state.week is
+  // the week currently being played, so anything at or after it is still live
+  // and must not count toward standings, records or the forecast.
+  const st = STATE.nflState;
+  const liveFrom = (st && +lg.season === +st.season && st.week) ? st.week : null;
+  let liveWeeks = [];
+  if(liveFrom){
+    liveWeeks = weeks.filter(w => w.week >= liveFrom);
+    for(let i=weeks.length-1; i>=0; i--) if(weeks[i].week >= liveFrom) weeks.splice(i,1);
+  }
+
+  // Sleeper's roster totals update live, so for a season in progress rebuild
+  // each team's record from completed weeks only.
+  if(liveWeeks.length){
+    const acc={};
+    teams.forEach(t=>{ acc[t.rosterId]={w:0,l:0,t:0,pf:0,pa:0}; });
+    weeks.filter(w=>!w.isPlayoff).forEach(w => w.games.forEach(g=>{
+      const A=acc[g.a.rosterId], B=acc[g.b.rosterId]; if(!A||!B) return;
+      A.pf+=g.a.points; A.pa+=g.b.points; B.pf+=g.b.points; B.pa+=g.a.points;
+      if(g.a.points>g.b.points){A.w++;B.l++;}
+      else if(g.b.points>g.a.points){B.w++;A.l++;}
+      else {A.t++;B.t++;}
+    }));
+    teams.forEach(t=>{
+      const a=acc[t.rosterId]; if(!a) return;
+      t.wins=a.w; t.losses=a.l; t.ties=a.t; t.pf=a.pf; t.pa=a.pa;
+    });
+  }
+
   // ---- brackets -------------------------------------------------------------
   // Sleeper does not always write the winner (`w`) into a bracket match, even
   // when the game was played — the 2020 consolation final is one such case. So
@@ -833,7 +867,7 @@ async function loadSeason(lg){
 
   return {
     season:+lg.season, source:'sleeper', leagueId:lg.league_id, name:lg.name,
-    teams, byRoster, weeks, schedule, regEnd, champion, runnerUp, draft,
+    teams, byRoster, weeks, liveWeeks, schedule, regEnd, champion, runnerUp, draft,
     consolationWinner, consolationRunnerUp, consolationPending, bottomPair, third, playoffTeams,
     teamCount: teams.length,
     // If a league plays an extra weekly game against the league median, the
@@ -861,7 +895,7 @@ function buildManual(){
       season:+h.season, source:'manual', name:CONFIG.leagueName,
       teams, byRoster:{}, weeks:[], regEnd:null,
       champion: champ?champ.manager:null, runnerUp: ru?ru.manager:null,
-      consolationWinner:null, consolationRunnerUp:null, consolationPending:[], bottomPair:null, schedule:[],
+      consolationWinner:null, consolationRunnerUp:null, consolationPending:[], bottomPair:null, schedule:[], liveWeeks:[],
       third: trd?trd.manager:null,
       playoffTeams: h.playoffSpots
         ? teams.filter(t => t.finish && t.finish <= h.playoffSpots).map(t => t.manager)
@@ -1815,7 +1849,8 @@ function buildDraftReport(cur){
   picks.forEach(p=>{
     const a = adpFor(p);
     p.adp = a ? a.adp : null;
-    p.value = a ? (a.adp - p.pick) : null;
+    // Positive = taken LATER than the market expected (value); negative = reach.
+    p.value = a ? (p.pick - a.adp) : null;
     if(a) adpHits++;
   });
 
@@ -1996,9 +2031,14 @@ function renderForecast(){
   p.appendChild(el('h2',null,`${f.season} season`));
   p.appendChild(el('div','small muted','This tab always covers the live season and ignores the season filter above.'));
 
-  /* ---- draft ---- */
-  p.appendChild(el('h2',null,'The draft'));
-  renderDraftReport(p, cur);
+  const draftSection = () => {
+    p.appendChild(el('h2',null,'The draft'));
+    renderDraftReport(p, cur);
+  };
+
+  // Before a ball is kicked the draft is the only thing to look at. Once the
+  // season is under way it belongs at the bottom.
+  if(f.weeksPlayed === 0) draftSection();
 
   /* ---- where things stand ---- */
   if(f.weeksPlayed === 0){
@@ -2009,6 +2049,11 @@ function renderForecast(){
     p.appendChild(box);
   } else {
     p.appendChild(el('h3',null,`Standings after week ${f.weeksPlayed}`));
+    const live = (cur.liveWeeks||[]).filter(w=>!w.isPlayoff);
+    if(live.length){
+      p.appendChild(el('div','small muted',
+        `Week ${live[0].week} is still being played, so it is not counted here. Standings, records and the odds all update once the week finishes.`));
+    }
     const rec={};
     cur.weeks.filter(w=>!w.isPlayoff).forEach(w=>w.games.forEach(g=>{
       const A=cur.byRoster[g.a.rosterId], B=cur.byRoster[g.b.rosterId];
@@ -2035,9 +2080,11 @@ function renderForecast(){
     t.appendChild(tb); wrapT(p,t);
 
     /* ---- last week ---- */
-    const lw = cur.weeks.filter(w=>!w.isPlayoff).pop();
+    const liveNow = (cur.liveWeeks||[]).filter(w=>!w.isPlayoff)[0];
+    const lw = liveNow || cur.weeks.filter(w=>!w.isPlayoff).pop();
     if(lw){
-      p.appendChild(el('h3',null,`Week ${lw.week} results`));
+      p.appendChild(el('h3',null,`Week ${lw.week} ${liveNow?'so far':'results'}`));
+      if(liveNow) p.appendChild(el('div','small muted','Live scores. Nothing on this page counts these until the week is final.'));
       const ranked=lw.allScores.slice().sort((a,b)=>b.points-a.points);
       const rankOf={}; ranked.forEach((x,i)=>rankOf[x.rosterId]=i+1);
       lw.games.forEach(g=>{
@@ -2094,6 +2141,8 @@ function renderForecast(){
     <p>A team's projected mean is not its raw average. Points per game is the best single predictor available, but unreliable over a handful of games, so the average is pulled toward the league mean of <b style="color:var(--paper)">${fmt(f.lgMean)}</b> — weighted as if the league average were ${f.K} extra games on the schedule. After three weeks a team is still mostly league-average; by week ten its own scoring dominates.</p>
     <p style="margin-bottom:0">Not modelled: individual players, injuries, bye weeks, trades, or how good the draft was. These numbers are worth reading from about week 4 onward.</p>`;
   p.appendChild(m);
+
+  if(f.weeksPlayed > 0) draftSection();
 }
 
 function renderRecords(){
@@ -2484,6 +2533,8 @@ function recompute(){
   const manual = buildManual();
   let sleeper = [];
   let failure = null;
+
+  STATE.nflState = await loadNflState();
 
   try{
     sleeper = await loadSleeper();
