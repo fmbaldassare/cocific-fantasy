@@ -219,6 +219,20 @@ table.matrix td.self{background:var(--ink3);color:var(--ghost)}
   border-radius:2px;padding:11px 14px;font-size:14px;line-height:1.45;
 }
 .trash-line:nth-child(even){border-left-color:var(--rose)}
+.trade-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.tside{background:var(--ink);border:1px solid var(--line);border-radius:3px;padding:10px 12px}
+.tside.won{border-color:var(--amber)}
+.tside-h{font-weight:600;font-size:14px;margin-bottom:6px;display:flex;justify-content:space-between;gap:10px}
+.tside.won .tside-h{color:var(--amber)}
+.bracket{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:8px}
+.bracket-col{background:var(--ink2);border:1px solid var(--line);border-radius:3px;padding:12px 14px}
+.bracket-h{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim);margin-bottom:9px}
+.seed{padding:7px 0;border-bottom:1px solid rgba(44,55,107,.45);font-size:14px}
+.seed:last-child{border-bottom:none}
+.seed-n{display:inline-block;min-width:18px;font-family:'IBM Plex Mono',monospace;
+  font-size:11px;color:var(--amber)}
+.seed .small{display:block;margin-top:2px}
 
 /* odds bar */
 .oddsbar{display:block;height:5px;background:var(--ink3);border-radius:3px;overflow:hidden;margin-bottom:4px;min-width:70px}
@@ -281,6 +295,7 @@ a{color:var(--amber)}
   <button role="tab" data-p="records" aria-selected="false">Records</button>
   <button role="tab" data-p="forecast" aria-selected="false">This Season</button>
   <button role="tab" data-p="shame" aria-selected="false">Shame</button>
+  <button role="tab" data-p="moves" aria-selected="false">Moves</button>
   <button role="tab" data-p="drafts" aria-selected="false">Drafts</button>
   <button role="tab" data-p="data" aria-selected="false">Data</button>
 </nav>
@@ -293,6 +308,7 @@ a{color:var(--amber)}
 <section class="panel" id="p-records"></section>
 <section class="panel" id="p-forecast"></section>
 <section class="panel" id="p-shame"></section>
+<section class="panel" id="p-moves"></section>
 <section class="panel" id="p-drafts"></section>
 <section class="panel" id="p-data"></section>
 
@@ -680,6 +696,9 @@ async function loadSeason(lg){
   const byRoster = {};
   teams.forEach(t => byRoster[t.rosterId] = t);
 
+  const startSlots = (lg.roster_positions||[])
+    .filter(x => !['BN','IR','TAXI'].includes(x));
+
   const regEnd = (lg.settings && lg.settings.playoff_week_start)
     ? lg.settings.playoff_week_start - 1 : 14;
   const lastWeek = Math.min(regEnd + 4, 18);
@@ -724,7 +743,21 @@ async function loadSeason(lg){
     const solo = rows.filter(r => playing.has(r.roster_id))
                      .map(r => ({ rosterId:r.roster_id, points:r.points||0 }));
 
-    weeks.push({ week:i+1, games, allScores:solo, isPlayoff:(i+1)>regEnd });
+    // Per-roster lineup detail, used for bench analysis and trade grading.
+    const lineups = {};
+    const weekPts = {};
+    rows.forEach(r => {
+      if(!playing.has(r.roster_id)) return;
+      lineups[r.roster_id] = {
+        starters: r.starters || [],
+        roster: r.players || [],
+        startersPoints: r.starters_points || []
+      };
+      Object.assign(weekPts, r.players_points || {});
+    });
+
+    weeks.push({ week:i+1, games, allScores:solo, isPlayoff:(i+1)>regEnd,
+                 lineups, weekPts });
   });
 
   // A week is only final once the NFL has moved past it. Sleeper's state.week is
@@ -840,6 +873,28 @@ async function loadSeason(lg){
     }
   }catch(e){}
 
+  // transactions, all weeks
+  let transactions = [];
+  try{
+    const txWeeks = await Promise.all(
+      Array.from({length:lastWeek}, (_,i) =>
+        getJSON(`${API}/league/${lg.league_id}/transactions/${i+1}`).catch(()=>[])
+      )
+    );
+    txWeeks.forEach((list,i) => {
+      (list||[]).filter(t => t.status === 'complete').forEach(t => {
+        transactions.push({
+          week: i+1, type: t.type, created: t.created,
+          rosterIds: t.roster_ids || [],
+          adds: t.adds || {}, drops: t.drops || {},
+          picks: (t.draft_picks||[]).length,
+          budget: (t.waiver_budget||[]).length,
+          bid: t.settings ? (t.settings.waiver_bid ?? null) : null
+        });
+      });
+    });
+  }catch(e){ console.warn('Transactions unavailable for '+lg.season, e.message); }
+
   // draft
   let draft = [];
   try{
@@ -867,7 +922,7 @@ async function loadSeason(lg){
 
   return {
     season:+lg.season, source:'sleeper', leagueId:lg.league_id, name:lg.name,
-    teams, byRoster, weeks, liveWeeks, schedule, regEnd, champion, runnerUp, draft,
+    teams, byRoster, weeks, liveWeeks, schedule, regEnd, startSlots, transactions, champion, runnerUp, draft,
     consolationWinner, consolationRunnerUp, consolationPending, bottomPair, third, playoffTeams,
     teamCount: teams.length,
     // If a league plays an extra weekly game against the league median, the
@@ -895,7 +950,7 @@ function buildManual(){
       season:+h.season, source:'manual', name:CONFIG.leagueName,
       teams, byRoster:{}, weeks:[], regEnd:null,
       champion: champ?champ.manager:null, runnerUp: ru?ru.manager:null,
-      consolationWinner:null, consolationRunnerUp:null, consolationPending:[], bottomPair:null, schedule:[], liveWeeks:[],
+      consolationWinner:null, consolationRunnerUp:null, consolationPending:[], bottomPair:null, schedule:[], liveWeeks:[], startSlots:[], transactions:[],
       third: trd?trd.manager:null,
       playoffTeams: h.playoffSpots
         ? teams.filter(t => t.finish && t.finish <= h.playoffSpots).map(t => t.manager)
@@ -1182,6 +1237,49 @@ function buildForecast(allSeasons){
     });
   }
 
+  // What each team needs: re-run the simulation with this week's result forced,
+  // once as a win and once as a loss, so the page can say what is actually at
+  // stake rather than only a season-long percentage.
+  const nextWeek = remaining[0] || null;
+  const scenario = {};
+  if(nextWeek && remaining.length){
+    const SC = 1200;   // 28 variants, so this stays quick on a phone
+    nextWeek.pairs.forEach(pair => {
+      [[pair[0],pair[1]],[pair[1],pair[0]]].forEach(([me,them]) => {
+        ['win','lose'].forEach(outcome => {
+          let made = 0;
+          for(let sim=0; sim<SC; sim++){
+            const w={}, p2={};
+            ids.forEach(i => { w[i]=wins[i]; p2[i]=pf[i]; });
+            // force this week's game
+            const sMe = mu[me] + gauss()*lgSD, sThem = mu[them] + gauss()*lgSD;
+            const hi = Math.max(sMe,sThem), lo = Math.min(sMe,sThem);
+            if(outcome==='win'){ p2[me]+=hi; p2[them]+=lo; w[me]++; }
+            else { p2[me]+=lo; p2[them]+=hi; w[them]++; }
+            // the rest of this week
+            nextWeek.pairs.forEach(pr => {
+              if(pr.includes(me)) return;
+              const sa = mu[pr[0]]+gauss()*lgSD, sb = mu[pr[1]]+gauss()*lgSD;
+              p2[pr[0]]+=sa; p2[pr[1]]+=sb;
+              if(sa>sb) w[pr[0]]++; else if(sb>sa) w[pr[1]]++; else { w[pr[0]]+=0.5; w[pr[1]]+=0.5; }
+            });
+            // and every week after it
+            remaining.slice(1).forEach(wk => wk.pairs.forEach(pr => {
+              const sa = mu[pr[0]]+gauss()*lgSD, sb = mu[pr[1]]+gauss()*lgSD;
+              p2[pr[0]]+=sa; p2[pr[1]]+=sb;
+              if(sa>sb) w[pr[0]]++; else if(sb>sa) w[pr[1]]++; else { w[pr[0]]+=0.5; w[pr[1]]+=0.5; }
+            }));
+            const ord = ids.slice().sort((a,b)=> w[b]-w[a] || p2[b]-p2[a]);
+            if(ord.indexOf(me) < spots) made++;
+          }
+          scenario[me] = scenario[me] || {};
+          scenario[me][outcome] = made/SC;
+          scenario[me].opp = them;
+        });
+      });
+    });
+  }
+
   const rows = cur.teams.map(t => ({
     manager: t.manager, teamName: t.teamName,
     wins: wins[t.rosterId], games: played.length,
@@ -1189,11 +1287,16 @@ function buildForecast(allSeasons){
     projWins: winSum[t.rosterId]/SIMS,
     seed: seedSum[t.rosterId]/SIMS,
     odds: made[t.rosterId]/SIMS,
-    top: topSeed[t.rosterId]/SIMS
+    top: topSeed[t.rosterId]/SIMS,
+    ifWin:  scenario[t.rosterId] ? scenario[t.rosterId].win  : null,
+    ifLose: scenario[t.rosterId] ? scenario[t.rosterId].lose : null,
+    nextOpp: (scenario[t.rosterId] && cur.byRoster[scenario[t.rosterId].opp])
+             ? cur.byRoster[scenario[t.rosterId].opp].manager : null
   })).sort((a,b)=> b.odds-a.odds || b.projWins-a.projWins);
 
   return {rows, lgMean, lgSD, spots, weeksPlayed:played.length,
-          weeksLeft:remaining.length, season:cur.season, sims:SIMS, K};
+          weeksLeft:remaining.length, season:cur.season, sims:SIMS, K,
+          nextWeek: nextWeek ? nextWeek.week : null};
 }
 
 function buildRecords(seasons, scope){
@@ -1502,6 +1605,8 @@ function renderAllTime(){
     tb.appendChild(tr);
   });
   t.appendChild(tb); wrapT(p,t);
+
+  renderBench(p);
 }
 
 function renderBowls(p){
@@ -1788,6 +1893,100 @@ function renderShame(){
 
 
 
+
+
+/* ---------- player index -----------------------------------------------------
+   Bench analysis needs each player's position, and Sleeper only exposes that in
+   /players/nfl, which is several megabytes. So it is fetched at most once and a
+   trimmed id -> position map is kept in localStorage. Every read and write is
+   guarded: in a private window, with site data blocked, or over quota, the
+   fetch simply happens again, and if it fails the bench sections are skipped
+   rather than showing wrong numbers.
+----------------------------------------------------------------------------- */
+const PLAYER_CACHE_KEY = 'cocific.players.v1';
+const PLAYER_CACHE_DAYS = 7;
+
+async function loadPlayerIndex(){
+  try{
+    const raw = localStorage.getItem(PLAYER_CACHE_KEY);
+    if(raw){
+      const c = JSON.parse(raw);
+      const ageDays = (Date.now() - (c.at||0)) / 86400000;
+      if(c.map && ageDays < PLAYER_CACHE_DAYS) return c.map;
+    }
+  }catch(e){ /* unreadable cache is the same as no cache */ }
+
+  try{
+    const all = await getJSON(`${API}/players/nfl`);
+    const map = {};
+    Object.keys(all).forEach(id => {
+      const pl = all[id];
+      if(!pl) return;
+      const pos = pl.position || (pl.fantasy_positions||[])[0];
+      if(!pos) return;
+      map[id] = {
+        p: pos,
+        f: (pl.fantasy_positions||[pos]).join(','),
+        n: pl.full_name || [pl.first_name,pl.last_name].filter(Boolean).join(' ') || id,
+        t: pl.team || ''
+      };
+    });
+    try{ localStorage.setItem(PLAYER_CACHE_KEY, JSON.stringify({at:Date.now(), map})); }
+    catch(e){ /* too big or storage blocked — fine, we still have it in memory */ }
+    return map;
+  }catch(e){
+    console.warn('Player index unavailable, bench analysis will be skipped:', e.message);
+    return null;
+  }
+}
+
+/* ---------- optimal lineup ---------------------------------------------------
+   Fills the league's real starting slots from the whole roster, most
+   constrained slots first and flex slots last, taking the highest scorer
+   available at each step.
+----------------------------------------------------------------------------- */
+const FLEX_ELIGIBLE = {
+  FLEX:['RB','WR','TE'],
+  WRRB_FLEX:['WR','RB'],
+  REC_FLEX:['WR','TE'],
+  WRRB_WRT:['WR','RB','TE'],
+  SUPER_FLEX:['QB','RB','WR','TE'],
+  IDP_FLEX:['DL','LB','DB']
+};
+
+function bestLineup(slots, roster, pts, index){
+  if(!index) return null;
+  const eligible = (slot, pos) => {
+    if(slot === pos) return true;
+    const e = FLEX_ELIGIBLE[slot];
+    return !!(e && e.includes(pos));
+  };
+  const pool = roster.map(id => ({
+    id,
+    pos: index[id] ? index[id].p : null,
+    fant: index[id] ? index[id].f.split(',') : [],
+    pts: Number(pts[id] || 0)
+  })).filter(x => x.pos);
+
+  // flex slots are the least constrained, so they go last
+  const order = slots.slice().sort((a,b) =>
+    (FLEX_ELIGIBLE[a]?1:0) - (FLEX_ELIGIBLE[b]?1:0));
+
+  const used = new Set();
+  let total = 0;
+  const chosen = [];
+  order.forEach(slot => {
+    let pick = null;
+    pool.forEach(x => {
+      if(used.has(x.id)) return;
+      const ok = eligible(slot, x.pos) || x.fant.some(fp => eligible(slot, fp));
+      if(!ok) return;
+      if(!pick || x.pts > pick.pts) pick = x;
+    });
+    if(pick){ used.add(pick.id); total += pick.pts; chosen.push({slot, ...pick}); }
+  });
+  return {total, chosen, used};
+}
 
 /* ---------- ADP ---------------------------------------------------------------
    Optional. Reads a Fantasy Football Calculator snapshot saved as adp.json so
@@ -2079,6 +2278,78 @@ function renderForecast(){
     });
     t.appendChild(tb); wrapT(p,t);
 
+    /* ---- projected standings, counting the week in progress ---- */
+    const liveW = (cur.liveWeeks||[]).filter(w=>!w.isPlayoff)[0];
+    if(liveW && liveW.games.length){
+      const officialPos={}; rows.forEach((r,i)=>officialPos[r.m]=i+1);
+      const proj={};
+      rows.forEach(r=>{ proj[r.m]={m:r.m, w:r.w, l:r.l, t:r.t, pf:r.pf, pa:r.pa, n:r.n,
+                                   liveFor:null, liveAgainst:null, liveWin:null, opp:null}; });
+      liveW.games.forEach(g=>{
+        const A=cur.byRoster[g.a.rosterId], B=cur.byRoster[g.b.rosterId];
+        if(!A||!B) return;
+        [[A,g.a.points,g.b.points,B],[B,g.b.points,g.a.points,A]].forEach(([tm,pf,pa,other])=>{
+          const r = proj[tm.manager] = proj[tm.manager] ||
+            {m:tm.manager,w:0,l:0,t:0,pf:0,pa:0,n:0,liveFor:null,liveAgainst:null,liveWin:null,opp:null};
+          r.liveFor=pf; r.liveAgainst=pa; r.opp=other.manager;
+          r.pf+=pf; r.pa+=pa; r.n++;
+          if(pf>pa){ r.w++; r.liveWin=true; }
+          else if(pf<pa){ r.l++; r.liveWin=false; }
+          else { r.t++; r.liveWin=null; }
+        });
+      });
+      const projRows = Object.values(proj).sort((a,b)=> b.w-a.w || b.pf-a.pf);
+
+      p.appendChild(el('h3',null,`Projected standings \u2014 if week ${liveW.week} ended now`));
+      p.appendChild(el('div','small muted','Current live scores applied on top of the official table above. Nothing here is final until the week closes, and these numbers do not feed the records or the odds.'));
+
+      const pt=el('table');
+      pt.innerHTML='<thead><tr><th></th><th>Move</th><th>Manager</th><th>Live matchup</th><th>W</th><th>L</th><th>PF</th><th>PA</th></tr></thead>';
+      const ptb=el('tbody');
+      projRows.forEach((r,i)=>{
+        const was = officialPos[r.m];
+        const move = was ? was-(i+1) : 0;
+        const arrow = move>0 ? `<span class="pos">\u25b2${move}</span>`
+                    : move<0 ? `<span class="neg">\u25bc${-move}</span>`
+                    : '<span class="muted">\u2013</span>';
+        const inPo = i < f.spots;
+        const live = r.liveFor===null ? '<span class="muted">bye</span>'
+          : `<span class="${r.liveWin===true?'pos':r.liveWin===false?'neg':''}">${fmt(r.liveFor)}</span>`
+            + ` <span class="muted">\u2013 ${fmt(r.liveAgainst)}</span>`
+            + `<div class="muted small">vs ${esc(r.opp||'')}</div>`;
+        ptb.innerHTML+=`<tr><td class="rank">${i+1}</td>
+          <td class="num">${arrow}</td>
+          <td class="name">${esc(r.m)}${inPo?' <span class="tag sleeper">PO</span>':''}</td>
+          <td style="text-align:right">${live}</td>
+          <td class="num">${r.w}</td><td class="num">${r.l}</td>
+          <td class="num">${fmt(r.pf)}</td><td class="num">${fmt(r.pa)}</td></tr>`;
+      });
+      pt.appendChild(ptb); wrapT(p,pt);
+
+      const movers = projRows.map((r,i)=>({m:r.m, move:(officialPos[r.m]||0)-(i+1)}))
+                             .filter(x=>x.move!==0);
+      const up = movers.filter(x=>x.move>0).sort((a,b)=>b.move-a.move)[0];
+      const down = movers.filter(x=>x.move<0).sort((a,b)=>a.move-b.move)[0];
+      if(up||down){
+        const bits=[];
+        if(up) bits.push(`${esc(up.m)} would climb ${up.move} spot${up.move===1?'':'s'}`);
+        if(down) bits.push(`${esc(down.m)} would drop ${-down.move}`);
+        p.appendChild(el('div','small muted', bits.join(' \u00b7 ') + '.'));
+      }
+
+      // who crosses the playoff line either way
+      const inNow = new Set(rows.slice(0,f.spots).map(r=>r.m));
+      const inProj = new Set(projRows.slice(0,f.spots).map(r=>r.m));
+      const entering=[...inProj].filter(m=>!inNow.has(m));
+      const leaving=[...inNow].filter(m=>!inProj.has(m));
+      if(entering.length||leaving.length){
+        const parts=[];
+        if(entering.length) parts.push(`into the top ${f.spots}: ${entering.map(esc).join(', ')}`);
+        if(leaving.length) parts.push(`out: ${leaving.map(esc).join(', ')}`);
+        p.appendChild(el('div','small',`<b>Playoff line moves</b> \u2014 ${parts.join(' \u00b7 ')}.`));
+      }
+    }
+
     /* ---- last week ---- */
     const liveNow = (cur.liveWeeks||[]).filter(w=>!w.isPlayoff)[0];
     const lw = liveNow || cur.weeks.filter(w=>!w.isPlayoff).pop();
@@ -2112,8 +2383,10 @@ function renderForecast(){
     : `${f.weeksPlayed} week${f.weeksPlayed===1?'':'s'} played, ${f.weeksLeft} to go. ${f.sims.toLocaleString()} simulated seasons. Top ${f.spots} make the playoffs.`;
   p.appendChild(el('div','small muted',state));
 
+  const hasScen = f.rows.some(r => r.ifWin !== null && r.ifWin !== undefined);
   const t2=el('table');
-  t2.innerHTML='<thead><tr><th></th><th>Manager</th><th>Record</th><th>PPG</th><th>Proj. wins</th><th>Avg seed</th><th>Top seed</th><th>Playoff odds</th></tr></thead>';
+  t2.innerHTML='<thead><tr><th></th><th>Manager</th><th>Record</th><th>PPG</th><th>Proj. wins</th><th>Avg seed</th><th>Top seed</th><th>Playoff odds</th>'
+    + (hasScen?`<th>If they win wk ${f.nextWeek}</th><th>If they lose</th>`:'') + '</tr></thead>';
   const tb2=el('tbody');
   f.rows.forEach((r,i)=>{
     const pct=(r.odds*100);
@@ -2130,9 +2403,56 @@ function renderForecast(){
       <td class="num">
         <div class="oddsbar"><span style="width:${Math.max(pct,1.5)}%"></span></div>
         <span class="${cls}">${pct.toFixed(1)}%</span>
-      </td></tr>`;
+      </td>
+      ${hasScen?`<td class="num pos">${r.ifWin===null||r.ifWin===undefined?'—':(r.ifWin*100).toFixed(0)+'%'}</td>
+      <td class="num neg">${r.ifLose===null||r.ifLose===undefined?'—':(r.ifLose*100).toFixed(0)+'%'}</td>`:''}</tr>`;
   });
   t2.appendChild(tb2); wrapT(p,t2);
+
+  if(hasScen){
+    const swing = f.rows.filter(r=>r.ifWin!=null && r.ifLose!=null)
+      .map(r=>({...r, swing:r.ifWin-r.ifLose}))
+      .sort((a,b)=>b.swing-a.swing);
+    const clinched = f.rows.filter(r=>r.odds>=0.999);
+    const dead = f.rows.filter(r=>r.odds<=0.001);
+    const bits=[];
+    if(clinched.length) bits.push(`<b>Clinched:</b> ${clinched.map(r=>esc(r.manager)).join(', ')}`);
+    if(dead.length) bits.push(`<b>Eliminated:</b> ${dead.map(r=>esc(r.manager)).join(', ')}`);
+    if(swing.length) bits.push(`<b>Most at stake in week ${f.nextWeek}:</b> ${esc(swing[0].manager)}`
+      + ` (${(swing[0].ifWin*100).toFixed(0)}% with a win, ${(swing[0].ifLose*100).toFixed(0)}% without)`);
+    if(bits.length) p.appendChild(el('div','card small', bits.join('<br>')));
+  }
+
+  /* ---- projected bracket ---- */
+  const seeds = f.rows.slice().sort((a,b)=> b.projWins-a.projWins || a.seed-b.seed)
+                      .slice(0, f.spots);
+  if(seeds.length === f.spots){
+    p.appendChild(el('h3',null,'Projected bracket'));
+    p.appendChild(el('div','small muted',`Seeded by projected wins. With ${f.spots} spots, `
+      + (f.spots===6 ? 'the top two get a first-round bye.' : 'everyone plays in round one.')));
+    const byes = f.spots===6 ? 2 : f.spots===4 ? 0 : 0;
+    const wrap=el('div','bracket');
+    if(byes){
+      const b=el('div','bracket-col');
+      b.appendChild(el('div','bracket-h','First-round bye'));
+      seeds.slice(0,byes).forEach((sd,i)=>{
+        b.appendChild(el('div','seed', `<span class="seed-n">${i+1}</span> ${esc(sd.manager)}`
+          + `<span class="muted small">${fmt(sd.projWins)} proj. wins</span>`));
+      });
+      wrap.appendChild(b);
+    }
+    const r1=el('div','bracket-col');
+    r1.appendChild(el('div','bracket-h','Round one'));
+    const rest = seeds.slice(byes);
+    for(let i=0;i<Math.floor(rest.length/2);i++){
+      const hi=rest[i], lo=rest[rest.length-1-i];
+      r1.appendChild(el('div','seed',
+        `<span class="seed-n">${byes+i+1}</span> ${esc(hi.manager)}`
+        + `<div class="muted small">vs <span class="seed-n">${seeds.indexOf(lo)+1}</span> ${esc(lo.manager)}</div>`));
+    }
+    wrap.appendChild(r1);
+    p.appendChild(wrap);
+  }
 
   p.appendChild(el('h3',null,'How the odds work'));
   const m=el('div','card small muted');
@@ -2300,6 +2620,316 @@ function renderRecords(){
   }
 }
 
+
+
+/* ---------- bench analysis ---------------------------------------------------
+   For every played week, compare what a manager actually started against the
+   best lineup their roster could have produced. The gap is points left on the
+   bench, and a loss smaller than that gap is a game thrown away by the manager
+   rather than the players.
+----------------------------------------------------------------------------- */
+function buildBench(seasons){
+  const idx = STATE.players;
+  if(!idx) return null;
+
+  const mgr = {};
+  const worstCalls = [];
+  const costlyLosses = [];
+  let weeksCovered = 0;
+
+  seasons.filter(s => s.source==='sleeper' && s.startSlots && s.startSlots.length)
+         .forEach(s => {
+    s.weeks.filter(w => !w.isPlayoff && w.lineups).forEach(w => {
+      let any = false;
+      // margin of each game, so a loss can be compared with the bench gap
+      const marginOf = {};
+      w.games.forEach(g => {
+        marginOf[g.a.rosterId] = {diff:g.a.points-g.b.points, opp:g.b.rosterId};
+        marginOf[g.b.rosterId] = {diff:g.b.points-g.a.points, opp:g.a.rosterId};
+      });
+
+      Object.entries(w.lineups).forEach(([rid, L]) => {
+        const team = s.byRoster[rid]; if(!team) return;
+        const actual = (L.startersPoints||[]).reduce((a,b)=>a+Number(b||0),0);
+        const best = bestLineup(s.startSlots, L.roster, w.weekPts, idx);
+        if(!best || !best.total) return;
+        any = true;
+
+        const left = Math.max(0, best.total - actual);
+        const r = mgr[team.manager] = mgr[team.manager] ||
+          {name:team.manager, weeks:0, actual:0, best:0, left:0, worst:null, perfect:0};
+        r.weeks++; r.actual+=actual; r.best+=best.total; r.left+=left;
+        if(left < 0.05) r.perfect++;
+        if(!r.worst || left > r.worst.left)
+          r.worst = {left, week:w.week, season:s.season};
+
+        const m = marginOf[rid];
+        if(m && m.diff < 0 && left > Math.abs(m.diff)){
+          const opp = s.byRoster[m.opp];
+          costlyLosses.push({manager:team.manager, season:s.season, week:w.week,
+                             margin:Math.abs(m.diff), left,
+                             opp: opp ? opp.manager : '?'});
+        }
+
+        // the single worst benching: a bench player who outscored a starter by most
+        const started = new Set(L.starters||[]);
+        const benchBest = (L.roster||[]).filter(id => !started.has(id))
+          .map(id => ({id, pts:Number(w.weekPts[id]||0), info:idx[id]}))
+          .filter(x => x.info)
+          .sort((a,b)=>b.pts-a.pts)[0];
+        const startWorst = (L.starters||[])
+          .map((id,i) => ({id, pts:Number((L.startersPoints||[])[i]||0), info:idx[id]}))
+          .filter(x => x.info && x.id && x.id !== '0')
+          .sort((a,b)=>a.pts-b.pts)[0];
+        if(benchBest && startWorst && benchBest.pts - startWorst.pts > 0){
+          const sameSlot = benchBest.info.f.split(',')
+            .some(fp => startWorst.info.f.split(',').includes(fp));
+          if(sameSlot) worstCalls.push({
+            manager:team.manager, season:s.season, week:w.week,
+            benched:benchBest.info.n, benchedPts:benchBest.pts,
+            started:startWorst.info.n, startedPts:startWorst.pts,
+            gap: benchBest.pts - startWorst.pts
+          });
+        }
+      });
+      if(any) weeksCovered++;
+    });
+  });
+
+  const rows = Object.values(mgr).map(r => ({
+    ...r,
+    eff: r.best ? r.actual/r.best : null,
+    leftPerWeek: r.weeks ? r.left/r.weeks : 0
+  })).sort((a,b)=> b.eff-a.eff);
+
+  if(!rows.length) return null;
+  return {
+    rows, weeksCovered,
+    worstCalls: worstCalls.sort((a,b)=>b.gap-a.gap).slice(0,8),
+    costlyLosses: costlyLosses.sort((a,b)=>(b.left-b.margin)-(a.left-a.margin)).slice(0,8)
+  };
+}
+
+function trashBench(){
+  const b = STATE.bench; const out=[];
+  if(!b || !b.rows.length) return out;
+  const n = v => esc(v);
+  const best = b.rows[0], worst = b.rows[b.rows.length-1];
+
+  if(worst && worst.eff < 0.95)
+    out.push(`${n(worst.name)} has started only ${(worst.eff*100).toFixed(1)}% of the points available to him, leaving ${worst.leftPerWeek.toFixed(1)} on the bench every week. The roster is not the problem.`);
+  if(best && best.eff > 0.95)
+    out.push(`${n(best.name)} runs the most efficient lineup in the league at ${(best.eff*100).toFixed(1)}%. Annoying, but there it is.`);
+
+  const perfect = b.rows.filter(r=>r.perfect>0).sort((a,b)=>b.perfect-a.perfect)[0];
+  if(perfect) out.push(`${n(perfect.name)} has set a perfect lineup ${perfect.perfect} time${perfect.perfect===1?'':'s'}. Nobody has ever let him forget a single one of the other weeks.`);
+
+  if(b.costlyLosses.length){
+    const c = b.costlyLosses[0];
+    out.push(`${n(c.manager)} lost to ${n(c.opp)} by ${c.margin.toFixed(1)} in ${c.season} week ${c.week} with ${c.left.toFixed(1)} points sitting on his bench. That one was not bad luck.`);
+  }
+  if(b.worstCalls.length){
+    const w = b.worstCalls[0];
+    out.push(`${n(w.manager)} started ${n(w.started)} for ${w.startedPts.toFixed(1)} and benched ${n(w.benched)} for ${w.benchedPts.toFixed(1)} in ${w.season} week ${w.week}. A ${w.gap.toFixed(1)} point decision, made on purpose.`);
+  }
+  const worstWeek = b.rows.map(r=>r.worst).filter(Boolean).sort((a,b)=>b.left-a.left)[0];
+  if(worstWeek){
+    const who = b.rows.find(r=>r.worst===worstWeek);
+    out.push(`Worst single week of lineup setting: ${n(who.name)} left ${worstWeek.left.toFixed(1)} points unused in ${worstWeek.season} week ${worstWeek.week}.`);
+  }
+  return out;
+}
+
+function renderBench(p){
+  const b = STATE.bench;
+  p.appendChild(el('h2',null,'Lineup efficiency'));
+  if(!b){
+    p.appendChild(el('div','empty','Needs Sleeper lineup data and the player index. If this stays empty, reload once — the player list is fetched a single time and then cached in your browser.'));
+    return;
+  }
+  p.appendChild(el('div','small muted',`What each manager actually started against the best lineup their roster could have produced that week. Regular season, Sleeper seasons only (${b.weeksCovered} weeks). 100% means never a wrong call.`));
+
+  const t=el('table');
+  t.innerHTML='<thead><tr><th></th><th>Manager</th><th>Efficiency</th><th>Points started</th><th>Points available</th><th>Left on bench</th><th>Per week</th><th>Perfect weeks</th></tr></thead>';
+  const tb=el('tbody');
+  b.rows.forEach((r,i)=>{
+    const cls = r.eff>=0.96 ? 'pos' : r.eff<=0.92 ? 'neg' : '';
+    tb.innerHTML+=`<tr><td class="rank">${i+1}</td>
+      <td class="name">${esc(r.name)}</td>
+      <td class="num ${cls}">${(r.eff*100).toFixed(1)}%</td>
+      <td class="num">${num0(r.actual)}</td>
+      <td class="num muted">${num0(r.best)}</td>
+      <td class="num">${num0(r.left)}</td>
+      <td class="num">${r.leftPerWeek.toFixed(1)}</td>
+      <td class="num muted">${r.perfect||''}</td></tr>`;
+  });
+  t.appendChild(tb); wrapT(p,t);
+
+  if(b.costlyLosses.length){
+    p.appendChild(el('h3',null,'Losses the bench caused'));
+    p.appendChild(el('div','small muted','Games lost by less than the points left sitting on the bench.'));
+    const t2=el('table');
+    t2.innerHTML='<thead><tr><th>Season</th><th>Manager</th><th>Lost to</th><th>By</th><th>Left on bench</th></tr></thead>';
+    const tb2=el('tbody');
+    b.costlyLosses.forEach(c=>{
+      tb2.innerHTML+=`<tr><td class="name num">${c.season} wk ${c.week}</td>
+        <td style="text-align:right">${esc(c.manager)}</td>
+        <td class="muted">${esc(c.opp)}</td>
+        <td class="num neg">${c.margin.toFixed(1)}</td>
+        <td class="num">${c.left.toFixed(1)}</td></tr>`;
+    });
+    t2.appendChild(tb2); wrapT(p,t2);
+  }
+
+  if(b.worstCalls.length){
+    p.appendChild(el('h3',null,'Worst start/sit calls'));
+    const t3=el('table');
+    t3.innerHTML='<thead><tr><th>Season</th><th>Manager</th><th>Started</th><th>Benched</th><th>Cost</th></tr></thead>';
+    const tb3=el('tbody');
+    b.worstCalls.forEach(w=>{
+      tb3.innerHTML+=`<tr><td class="name num">${w.season} wk ${w.week}</td>
+        <td style="text-align:right">${esc(w.manager)}</td>
+        <td class="small">${esc(w.started)} <span class="neg">${w.startedPts.toFixed(1)}</span></td>
+        <td class="small">${esc(w.benched)} <span class="pos">${w.benchedPts.toFixed(1)}</span></td>
+        <td class="num">${w.gap.toFixed(1)}</td></tr>`;
+    });
+    t3.appendChild(tb3); wrapT(p,t3);
+  }
+
+  renderTrash(p, trashBench(), 'Bench talk');
+}
+
+
+/* ---------- transactions and trade grading -----------------------------------
+   A trade is graded by what each side's incoming players actually scored FOR
+   THAT TEAM from the trade week onward. It is hindsight, not a judgement of the
+   decision at the time, and it only counts the seasons on file — a pick or a
+   player who paid off a year later does not show up here.
+----------------------------------------------------------------------------- */
+function buildTransactions(seasons){
+  const idx = STATE.players;
+  const perMgr = {};
+  const trades = [];
+  let totals = {trade:0, waiver:0, free_agent:0, commissioner:0};
+  let anyData = false;
+
+  seasons.filter(s => s.source==='sleeper' && s.transactions && s.transactions.length)
+         .forEach(s => {
+    anyData = true;
+    // points a player scored from a given week onward, this season only
+    const after = (playerId, fromWeek) => s.weeks
+      .filter(w => w.week >= fromWeek && w.weekPts)
+      .reduce((a,w) => a + Number(w.weekPts[playerId] || 0), 0);
+
+    s.transactions.forEach(t => {
+      if(totals[t.type] === undefined) totals[t.type] = 0;
+      totals[t.type]++;
+      const mgrsInvolved = new Set();
+      t.rosterIds.forEach(rid => {
+        const team = s.byRoster[rid];
+        if(team) mgrsInvolved.add(team.manager);
+      });
+      mgrsInvolved.forEach(m => {
+        const r = perMgr[m] = perMgr[m] || {name:m, trade:0, waiver:0, free_agent:0, commissioner:0, total:0, spent:0};
+        if(r[t.type] === undefined) r[t.type] = 0;
+        r[t.type]++; r.total++;
+        if(t.bid) r.spent += t.bid;
+      });
+
+      if(t.type !== 'trade') return;
+
+      // what each side received, and what it went on to score
+      const sides = {};
+      Object.entries(t.adds).forEach(([pid, rid]) => {
+        const team = s.byRoster[rid]; if(!team) return;
+        const side = sides[rid] = sides[rid] || {manager:team.manager, got:[], points:0};
+        const info = idx ? idx[pid] : null;
+        const pts = after(pid, t.week);
+        side.got.push({name: info ? info.n : pid, pos: info ? info.p : '', pts});
+        side.points += pts;
+      });
+      const list = Object.values(sides);
+      if(list.length < 2) return;
+      list.sort((a,b)=>b.points-a.points);
+      trades.push({
+        season:s.season, week:t.week, sides:list, picks:t.picks,
+        margin: list[0].points - list[list.length-1].points,
+        winner: list[0].manager, loser: list[list.length-1].manager
+      });
+    });
+  });
+
+  if(!anyData) return null;
+  const rows = Object.values(perMgr).sort((a,b)=>b.total-a.total);
+  return {rows, totals, trades: trades.sort((a,b)=> b.season-a.season || b.week-a.week),
+          lopsided: trades.slice().sort((a,b)=>b.margin-a.margin).slice(0,5)};
+}
+
+function trashTx(){
+  const T = STATE.tx; const out=[];
+  if(!T || !T.rows.length) return out;
+  const n = v => esc(v);
+
+  const busiest = T.rows[0];
+  const quietest = T.rows[T.rows.length-1];
+  if(busiest) out.push(`${n(busiest.name)} has made ${busiest.total} moves, more than anyone. Churn is not the same thing as strategy.`);
+  if(quietest && quietest.total <= 3) out.push(`${n(quietest.name)} has made ${quietest.total} move${quietest.total===1?'':'s'} in total. Either supreme confidence in his draft or he forgot the league exists.`);
+
+  const traders = T.rows.filter(r=>r.trade>0).sort((a,b)=>b.trade-a.trade)[0];
+  const noTrade = T.rows.filter(r=>!r.trade).map(r=>r.name);
+  if(traders) out.push(`${n(traders.name)} has been in ${traders.trade} trade${traders.trade===1?'':'s'}, the most in the league.`);
+  if(noTrade.length && noTrade.length <= 5)
+    out.push(`Never traded with anyone: ${noTrade.map(n).join(', ')}. Hard to get fleeced if you never pick up the phone.`);
+
+  if(T.lopsided.length){
+    const t = T.lopsided[0];
+    out.push(`The most one-sided trade on record: ${n(t.winner)} got ${t.margin.toFixed(1)} more points out of it than ${n(t.loser)} (${t.season}, week ${t.week}). Still waiting on the apology.`);
+  }
+  const spender = T.rows.filter(r=>r.spent>0).sort((a,b)=>b.spent-a.spent)[0];
+  if(spender) out.push(`${n(spender.name)} has spent ${spender.spent} of waiver budget. Nobody has ever won a title at the waiver wire, but he keeps trying.`);
+  return out;
+}
+
+function renderTransactions(){
+  const p=$('#p-moves'); p.innerHTML='';
+  const T = STATE.tx;
+  p.appendChild(el('h2',null,'Moves'));
+  if(!T){
+    p.appendChild(el('div','empty','No transaction data. Sleeper records trades, waivers and free-agent moves from 2020 onward; the NFL.com years have none on file.'));
+    return;
+  }
+  p.appendChild(el('div','small muted',`Trades, waiver claims and free-agent pickups across the Sleeper seasons in view. ${T.totals.trade||0} trades, ${(T.totals.waiver||0)} waiver claims and ${(T.totals.free_agent||0)} free-agent moves.`));
+
+  const t=el('table');
+  t.innerHTML='<thead><tr><th></th><th>Manager</th><th>Total moves</th><th>Trades</th><th>Waivers</th><th>Free agents</th><th>Budget spent</th></tr></thead>';
+  const tb=el('tbody');
+  T.rows.forEach((r,i)=>{
+    tb.innerHTML+=`<tr><td class="rank">${i+1}</td><td class="name">${esc(r.name)}</td>
+      <td class="num">${r.total}</td><td class="num">${r.trade||''}</td>
+      <td class="num">${r.waiver||''}</td><td class="num">${r.free_agent||''}</td>
+      <td class="num muted">${r.spent||''}</td></tr>`;
+  });
+  t.appendChild(tb); wrapT(p,t);
+
+  if(T.trades.length){
+    p.appendChild(el('h2',null,'Every trade, and who won it'));
+    p.appendChild(el('div','small muted','Graded by what each side’s incoming players went on to score for their new team, from the trade week to the end of that season. Pure hindsight, and it cannot see value that arrived in a later season or through a draft pick.'));
+    T.trades.forEach(tr=>{
+      const c=el('div','bowl');
+      const sides = tr.sides.map((sd,i)=>`
+        <div class="tside ${i===0?'won':''}">
+          <div class="tside-h">${esc(sd.manager)} <span class="num">${sd.points.toFixed(1)}</span></div>
+          ${sd.got.map(g=>`<div class="small muted">${esc(g.name)}${g.pos?' · '+esc(g.pos):''} <span class="num">${g.pts.toFixed(1)}</span></div>`).join('')}
+        </div>`).join('');
+      c.innerHTML = `<div class="bowl-head"><span class="bowl-name">${tr.season} &middot; week ${tr.week}</span>`
+        + `<span class="bowl-sub">${esc(tr.winner)} came out ahead by ${tr.margin.toFixed(1)}${tr.picks?` · ${tr.picks} pick${tr.picks===1?'':'s'} also moved`:''}</span></div>`
+        + `<div class="trade-grid">${sides}</div>`;
+      p.appendChild(c);
+    });
+  }
+
+  renderTrash(p, trashTx(), 'Trade talk');
+}
 
 /* ---------- draft insights ---------------------------------------------------
    What the league's own history says about drafting. Two caveats stated on the
@@ -2521,11 +3151,13 @@ function recompute(){
   STATE.recPost  = buildRecords(STATE.seasons,'post');
   STATE.shame    = buildShame(STATE.seasons);
   STATE.draftInsights = buildDraftInsights(STATE.seasons);
+  STATE.bench    = buildBench(STATE.seasons);
+  STATE.tx       = buildTransactions(STATE.seasons);
   STATE.draftReport   = buildDraftReport(STATE.allSeasons.filter(s=>s.source==='sleeper').pop());
 
   renderStrip(); renderOverview(); renderSeasons(); renderMatchups();
   renderAllTime(); renderH2H(); renderRecords(); renderForecast();
-  renderShame(); renderDrafts(); renderData();
+  renderShame(); renderTransactions(); renderDrafts(); renderData();
 }
 
 /* ---------- boot ---------- */
@@ -2535,6 +3167,7 @@ function recompute(){
   let failure = null;
 
   STATE.nflState = await loadNflState();
+  STATE.players  = await loadPlayerIndex();
 
   try{
     sleeper = await loadSleeper();
