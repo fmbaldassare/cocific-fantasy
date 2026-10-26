@@ -377,7 +377,8 @@ const PUNISHMENTS = {
   2022 : '👨‍🎓 PAES',
   2023 : 'Suspended 😌',
   2024 : 'Suspended 😌',
-  2025 : 'Suspended 😌'
+  2025 : 'Suspended 😌',
+  2026 : 'Suspended 😌'
 };
 
 const LAST_PLACE = {
@@ -696,6 +697,9 @@ async function loadSeason(lg){
   const byRoster = {};
   teams.forEach(t => byRoster[t.rosterId] = t);
 
+  // waiver_type 2 is FAAB; a budget of 0 means bids are not in use
+  const faab = !!(lg.settings && lg.settings.waiver_budget > 0);
+
   const startSlots = (lg.roster_positions||[])
     .filter(x => !['BN','IR','TAXI'].includes(x));
 
@@ -764,7 +768,11 @@ async function loadSeason(lg){
   // the week currently being played, so anything at or after it is still live
   // and must not count toward standings, records or the forecast.
   const st = STATE.nflState;
-  const liveFrom = (st && +lg.season === +st.season && st.week) ? st.week : null;
+  // Outside the regular season and playoffs nothing is being played, so there
+  // is no live week — without this the off-season would wrongly hide the
+  // weeks of a season that has already finished.
+  const inPlay = !!(st && ['regular','post'].includes(st.season_type));
+  const liveFrom = (inPlay && +lg.season === +st.season && st.week) ? st.week : null;
   let liveWeeks = [];
   if(liveFrom){
     liveWeeks = weeks.filter(w => w.week >= liveFrom);
@@ -922,7 +930,7 @@ async function loadSeason(lg){
 
   return {
     season:+lg.season, source:'sleeper', leagueId:lg.league_id, name:lg.name,
-    teams, byRoster, weeks, liveWeeks, schedule, regEnd, startSlots, transactions, champion, runnerUp, draft,
+    teams, byRoster, weeks, liveWeeks, schedule, regEnd, startSlots, transactions, faab, champion, runnerUp, draft,
     consolationWinner, consolationRunnerUp, consolationPending, bottomPair, third, playoffTeams,
     teamCount: teams.length,
     // If a league plays an extra weekly game against the league median, the
@@ -950,7 +958,7 @@ function buildManual(){
       season:+h.season, source:'manual', name:CONFIG.leagueName,
       teams, byRoster:{}, weeks:[], regEnd:null,
       champion: champ?champ.manager:null, runnerUp: ru?ru.manager:null,
-      consolationWinner:null, consolationRunnerUp:null, consolationPending:[], bottomPair:null, schedule:[], liveWeeks:[], startSlots:[], transactions:[],
+      consolationWinner:null, consolationRunnerUp:null, consolationPending:[], bottomPair:null, schedule:[], liveWeeks:[], startSlots:[], transactions:[], faab:false,
       third: trd?trd.manager:null,
       playoffTeams: h.playoffSpots
         ? teams.filter(t => t.finish && t.finish <= h.playoffSpots).map(t => t.manager)
@@ -1107,7 +1115,10 @@ function buildShame(seasons){
 
   seasons.slice().sort((a,b)=>b.season-a.season).forEach(s => {
     const played = s.teams.some(t => (t.wins+t.losses+t.ties) > 0 || t.finish);
-    if(!played) return;   // season not started yet
+    if(!played) return;              // season not started yet
+    // Nobody has finished last until the season is over, so a season still
+    // being played has no cellar and no punishment to hand out.
+    if(!s.champion) return;
 
     let pair;
     const ov = LAST_PLACE[s.season];
@@ -1137,9 +1148,12 @@ function buildShame(seasons){
 
   // Seasons we know the punishment for but not yet who served it.
   Object.keys(PUNISHMENTS).map(Number).forEach(y => {
-    if(!rows.find(r => r.season === y))
-      rows.push({season:y, last:null, secondLast:null,
-                 punishment:punishmentFor(y), unrecovered:true});
+    if(rows.find(r => r.season === y)) return;
+    const s = seasons.find(x => x.season === y);
+    const running = !!(s && !s.champion && s.teams.some(t => (t.wins+t.losses+t.ties) > 0));
+    rows.push({season:y, last:null, secondLast:null,
+               punishment:punishmentFor(y),
+               unrecovered: !running, running});
   });
   rows.sort((a,b) => b.season - a.season);
 
@@ -1851,10 +1865,10 @@ function renderShame(){
   const t=el('table');
   t.innerHTML='<thead><tr><th>Season</th><th>Last place</th><th>Second-to-last</th><th>Punishment</th></tr></thead>';
   const tb=el('tbody');
-  const who = (tm, cls) => tm
+  const who = (tm, cls, r) => tm
     ? `<span class="${cls}">${esc(tm.manager)}</span>` +
       (tm.teamName ? `<div class="muted small">${esc(tm.teamName)}</div>` : '')
-    : '<span class="muted">not recovered</span>';
+    : `<span class="muted">${r && r.running ? 'season not finished' : 'not recovered'}</span>`;
   rows.forEach(r=>{
     const pz = r.punishment;
     const cell = !pz ? '<span class="muted">—</span>'
@@ -1862,9 +1876,9 @@ function renderShame(){
       : [pz.last ? '<b>Last:</b> '+esc(pz.last) : '',
          pz.secondLast ? '<b>2nd:</b> '+esc(pz.secondLast) : ''].filter(Boolean).join('<br>');
     tb.innerHTML+=`<tr>
-      <td class="name num">${r.season}${r.overridden?'<span class="tag">pinned</span>':''}${r.unrecovered?'<span class="tag manual">no data</span>':''}</td>
-      <td style="text-align:right">${who(r.last,'shame-last')}</td>
-      <td style="text-align:right">${who(r.secondLast,'')}</td>
+      <td class="name num">${r.season}${r.overridden?'<span class="tag">pinned</span>':''}${r.running?'<span class="tag sleeper">in progress</span>':r.unrecovered?'<span class="tag manual">no data</span>':''}</td>
+      <td style="text-align:right">${who(r.last,'shame-last',r)}</td>
+      <td style="text-align:right">${who(r.secondLast,'',r)}</td>
       <td style="text-align:right" class="small">${cell}</td>
     </tr>`;
   });
@@ -2811,11 +2825,12 @@ function buildTransactions(seasons){
   const perMgr = {};
   const trades = [];
   let totals = {trade:0, waiver:0, free_agent:0, commissioner:0};
-  let anyData = false;
+  let anyData = false, anyFaab = false;
 
   seasons.filter(s => s.source==='sleeper' && s.transactions && s.transactions.length)
          .forEach(s => {
     anyData = true;
+    if(s.faab) anyFaab = true;
     // points a player scored from a given week onward, this season only
     const after = (playerId, fromWeek) => s.weeks
       .filter(w => w.week >= fromWeek && w.weekPts)
@@ -2830,7 +2845,8 @@ function buildTransactions(seasons){
         if(team) mgrsInvolved.add(team.manager);
       });
       mgrsInvolved.forEach(m => {
-        const r = perMgr[m] = perMgr[m] || {name:m, trade:0, waiver:0, free_agent:0, commissioner:0, total:0, spent:0};
+        const r = perMgr[m] = perMgr[m] || {name:m, trade:0, waiver:0, free_agent:0,
+          commissioner:0, total:0, spent:0, tw:0, tl:0, td:0, net:0};
         if(r[t.type] === undefined) r[t.type] = 0;
         r[t.type]++; r.total++;
         if(t.bid) r.spent += t.bid;
@@ -2851,18 +2867,32 @@ function buildTransactions(seasons){
       const list = Object.values(sides);
       if(list.length < 2) return;
       list.sort((a,b)=>b.points-a.points);
+      const margin = list[0].points - list[list.length-1].points;
+      const tie = margin < 0.05;
       trades.push({
-        season:s.season, week:t.week, sides:list, picks:t.picks,
-        margin: list[0].points - list[list.length-1].points,
-        winner: list[0].manager, loser: list[list.length-1].manager
+        season:s.season, week:t.week, sides:list, picks:t.picks, margin, tie,
+        winner: tie ? null : list[0].manager,
+        loser:  tie ? null : list[list.length-1].manager
+      });
+      // credit each side with a win, loss or draw, and the points swing
+      const avg = list.reduce((a,x)=>a+x.points,0) / list.length;
+      list.forEach(sd => {
+        const r = perMgr[sd.manager];
+        if(!r) return;
+        r.net += sd.points - avg;
+        if(tie) r.td++;
+        else if(sd.manager === list[0].manager) r.tw++;
+        else if(sd.manager === list[list.length-1].manager) r.tl++;
+        else r.td++;   // a three-way trade's middle side counts as neither
       });
     });
   });
 
   if(!anyData) return null;
   const rows = Object.values(perMgr).sort((a,b)=>b.total-a.total);
-  return {rows, totals, trades: trades.sort((a,b)=> b.season-a.season || b.week-a.week),
-          lopsided: trades.slice().sort((a,b)=>b.margin-a.margin).slice(0,5)};
+  return {rows, totals, anyFaab,
+          trades: trades.sort((a,b)=> b.season-a.season || b.week-a.week),
+          lopsided: trades.filter(t=>!t.tie).sort((a,b)=>b.margin-a.margin).slice(0,5)};
 }
 
 function trashTx(){
@@ -2885,8 +2915,14 @@ function trashTx(){
     const t = T.lopsided[0];
     out.push(`The most one-sided trade on record: ${n(t.winner)} got ${t.margin.toFixed(1)} more points out of it than ${n(t.loser)} (${t.season}, week ${t.week}). Still waiting on the apology.`);
   }
-  const spender = T.rows.filter(r=>r.spent>0).sort((a,b)=>b.spent-a.spent)[0];
-  if(spender) out.push(`${n(spender.name)} has spent ${spender.spent} of waiver budget. Nobody has ever won a title at the waiver wire, but he keeps trying.`);
+  if(T.anyFaab){
+    const spender = T.rows.filter(r=>r.spent>0).sort((a,b)=>b.spent-a.spent)[0];
+    if(spender) out.push(`${n(spender.name)} has spent ${spender.spent} of waiver budget. Nobody has ever won a title at the waiver wire, but he keeps trying.`);
+  }
+  const best = T.rows.filter(r=>r.trade>=2).sort((a,b)=>(b.tw-b.tl)-(a.tw-a.tl))[0];
+  const worst = T.rows.filter(r=>r.trade>=2).sort((a,b)=>(a.tw-a.tl)-(b.tw-b.tl))[0];
+  if(best && best.tw>best.tl) out.push(`${n(best.name)} is ${best.tw}-${best.tl} in trades. Stop answering his messages.`);
+  if(worst && worst.tl>worst.tw) out.push(`${n(worst.name)} is ${worst.tw}-${worst.tl} in trades and ${worst.net.toFixed(1)} points down overall. He is the reason the rest of the league still trades at all.`);
   return out;
 }
 
@@ -2901,15 +2937,26 @@ function renderTransactions(){
   p.appendChild(el('div','small muted',`Trades, waiver claims and free-agent pickups across the Sleeper seasons in view. ${T.totals.trade||0} trades, ${(T.totals.waiver||0)} waiver claims and ${(T.totals.free_agent||0)} free-agent moves.`));
 
   const t=el('table');
-  t.innerHTML='<thead><tr><th></th><th>Manager</th><th>Total moves</th><th>Trades</th><th>Waivers</th><th>Free agents</th><th>Budget spent</th></tr></thead>';
+  t.innerHTML='<thead><tr><th></th><th>Manager</th><th>Total moves</th><th>Trades</th>'
+    + '<th>Trade record</th><th>Net points</th><th>Waivers</th><th>Free agents</th>'
+    + (T.anyFaab?'<th>Budget spent</th>':'') + '</tr></thead>';
   const tb=el('tbody');
   T.rows.forEach((r,i)=>{
+    const rec = r.trade ? `${r.tw}-${r.tl}${r.td?'-'+r.td:''}` : '';
+    const recCls = r.tw>r.tl ? 'pos' : r.tw<r.tl ? 'neg' : '';
     tb.innerHTML+=`<tr><td class="rank">${i+1}</td><td class="name">${esc(r.name)}</td>
       <td class="num">${r.total}</td><td class="num">${r.trade||''}</td>
+      <td class="num ${recCls}">${rec}</td>
+      <td class="num ${r.trade?(r.net>=0?'pos':'neg'):''}">${r.trade?(r.net>=0?'+':'')+r.net.toFixed(1):''}</td>
       <td class="num">${r.waiver||''}</td><td class="num">${r.free_agent||''}</td>
-      <td class="num muted">${r.spent||''}</td></tr>`;
+      ${T.anyFaab?`<td class="num muted">${r.spent||''}</td>`:''}</tr>`;
   });
   t.appendChild(tb); wrapT(p,t);
+
+  const traded = T.rows.filter(r=>r.trade>0);
+  if(traded.length){
+    p.appendChild(el('div','small muted','Trade record counts each trade as a win for whichever side its incoming players outscored. Net points is how far above or below the even split each manager came out, added up across every trade.'));
+  }
 
   if(T.trades.length){
     p.appendChild(el('h2',null,'Every trade, and who won it'));
@@ -2917,12 +2964,12 @@ function renderTransactions(){
     T.trades.forEach(tr=>{
       const c=el('div','bowl');
       const sides = tr.sides.map((sd,i)=>`
-        <div class="tside ${i===0?'won':''}">
+        <div class="tside ${(i===0 && !tr.tie)?'won':''}">
           <div class="tside-h">${esc(sd.manager)} <span class="num">${sd.points.toFixed(1)}</span></div>
           ${sd.got.map(g=>`<div class="small muted">${esc(g.name)}${g.pos?' · '+esc(g.pos):''} <span class="num">${g.pts.toFixed(1)}</span></div>`).join('')}
         </div>`).join('');
       c.innerHTML = `<div class="bowl-head"><span class="bowl-name">${tr.season} &middot; week ${tr.week}</span>`
-        + `<span class="bowl-sub">${esc(tr.winner)} came out ahead by ${tr.margin.toFixed(1)}${tr.picks?` · ${tr.picks} pick${tr.picks===1?'':'s'} also moved`:''}</span></div>`
+        + `<span class="bowl-sub">${tr.tie ? 'a genuine wash' : esc(tr.winner)+' came out ahead by '+tr.margin.toFixed(1)}${tr.picks?` · ${tr.picks} pick${tr.picks===1?'':'s'} also moved`:''}</span></div>`
         + `<div class="trade-grid">${sides}</div>`;
       p.appendChild(c);
     });
